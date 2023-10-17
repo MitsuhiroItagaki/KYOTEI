@@ -1,0 +1,2280 @@
+-- Databricks notebook source
+-- MAGIC %md
+-- MAGIC # Databricksで実践するData &amp; AI（競艇予測：履歴データ取得用ジョブ)
+-- MAGIC
+-- MAGIC このノートブックは公式の競艇サイトをスクレイピングし、トレーニングデータとして使用する各種情報を取得し、１レースの情報は1レコードとしてデルタ形式で保存します。<br>
+-- MAGIC 競艇サイトのフォーマット(2021/6/12現在）に合わせて正規表現等でデータを加工していますのでサイト変更された場合などには修正が必要になります。<br>
+-- MAGIC スクレイピングにはbeautifulsoup4を使用していますので新規クラスタには追加でパッケージをインストールしておいてください。<br>
+-- MAGIC 例： %pip install　beautifulsoup4　もしくはクラスタライブラリ/InitScriptなどでインストールしてください。　<br>
+-- MAGIC
+-- MAGIC <head>
+-- MAGIC   <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap" rel="stylesheet">
+-- MAGIC   <style>
+-- MAGIC     h1,h2,h3,p,span,td, div {font-family: "Kosugi Maru", sans-serif !important;}
+-- MAGIC   </style>
+-- MAGIC </head>
+-- MAGIC
+-- MAGIC <div style='line-height:1.5rem; padding-top: 10px;'>
+-- MAGIC <h2>競艇履歴データ取得</h2>  
+-- MAGIC (1) 競艇サイトをスクレイピング<br>
+-- MAGIC (2) スクレイピングデータの整形<br>
+-- MAGIC (3) １レコード形式に変換<br>
+-- MAGIC (4) ブロンズテーブルに保存<br>
+-- MAGIC </div>
+-- MAGIC
+-- MAGIC <table>
+-- MAGIC   <tr><th>作者</th><th>Databricks Japan</th></tr>
+-- MAGIC   <tr><td>日付</td><td>2021/12/13</td></tr>
+-- MAGIC   <tr><td>バージョン</td><td>1.0</td></tr>
+-- MAGIC   <tr><td>RUNTIME</td><td>DBR10.1</td></tr>
+-- MAGIC   <tr><td>クラスター</td><td>i3.xlarge(シングル）</td></tr>
+-- MAGIC   <tr><td>必要なパッケージ</td><td>beautifulsoup4</td></tr>
+-- MAGIC </table>
+-- MAGIC
+-- MAGIC ##### 場所コードの変換は以下のようになっています。
+-- MAGIC if place == "01": place="桐生"<br>
+-- MAGIC if place == "02": place="戸田"<br>
+-- MAGIC if place == "03": place="江戸川"<br>
+-- MAGIC if place == "04": place="平和島"<br>
+-- MAGIC if place == "05": place="多摩川"<br>
+-- MAGIC if place == "06": place="浜名湖"<br>
+-- MAGIC if place == "07": place="蒲郡"<br>
+-- MAGIC if place == "08": place="常滑"<br>
+-- MAGIC if place == "09": place="津"<br>
+-- MAGIC if place == "10": place="三国"<br>
+-- MAGIC if place == "11": place="琵琶湖"<br>
+-- MAGIC if place == "12": place="住之江"<br>
+-- MAGIC if place == "13": place="尼崎"<br>
+-- MAGIC if place == "14": place="鳴門"<br>
+-- MAGIC if place == "15": place="丸亀"<br>
+-- MAGIC if place == "16": place="児島"<br>
+-- MAGIC if place == "17": place="宮島"<br>
+-- MAGIC if place == "18": place="徳山"<br>
+-- MAGIC if place == "19": place="下関"<br>
+-- MAGIC if place == "20": place="若松"<br>
+-- MAGIC if place == "21": place="芦屋"<br>
+-- MAGIC if place == "22": place="福岡"<br>
+-- MAGIC if place == "23": place="唐津"<br>
+-- MAGIC if place == "24": place="大村"<br>
+
+-- COMMAND ----------
+
+-- MAGIC %md ## 準備
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC %pip install beautifulsoup4==4.9.0
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC dbutils.library.restartPython()
+
+-- COMMAND ----------
+
+-- DBTITLE 1,ライブラリのインポート
+-- MAGIC %python
+-- MAGIC import sys
+-- MAGIC import pandas as pd
+-- MAGIC import re
+-- MAGIC import requests
+-- MAGIC import json
+-- MAGIC from bs4 import BeautifulSoup
+-- MAGIC from pyspark import SparkContext
+-- MAGIC from pyspark.sql import SQLContext
+-- MAGIC from pyspark.sql.types import *
+
+-- COMMAND ----------
+
+-- DBTITLE 1,履歴データを格納するDB情報
+-- MAGIC %sql
+-- MAGIC CREATE DATABASE IF NOT EXISTS KYOTEI_DB;
+-- MAGIC use kyotei_db;
+
+-- COMMAND ----------
+
+CREATE TABLE IF NOT EXISTS BANGUMI
+(
+RACEDATE        string,
+PLACE   string,
+RACE    string,
+PLAYERID1       string,
+PLAYERID2       string,
+PLAYERID3       string,
+PLAYERID4       string,
+PLAYERID5       string,
+PLAYERID6       string,
+CLASS1  string,
+CLASS2  string,
+CLASS3  string,
+CLASS4  string,
+CLASS5  string,
+CLASS6  string,
+CLUB1   string,
+CLUB2   string,
+CLUB3   string,
+CLUB4   string,
+CLUB5   string,
+CLUB6   string,
+AGE1    string,
+AGE2    string,
+AGE3    string,
+AGE4    string,
+AGE5    string,
+AGE6    string,
+WEIGHT1 string,
+WEIGHT2 string,
+WEIGHT3 string,
+WEIGHT4 string,
+WEIGHT5 string,
+WEIGHT6 string,
+F1      string,
+F2      string,
+F3      string,
+F4      string,
+F5      string,
+F6      string,
+L1      string,
+L2      string,
+L3      string,
+L4      string,
+L5      string,
+L6      string,
+WIN1RATE1       string,
+WIN1RATE2       string,
+WIN1RATE3       string,
+WIN1RATE4       string,
+WIN1RATE5       string,
+WIN1RATE6       string,
+WIN2RATE1       string,
+WIN2RATE2       string,
+WIN2RATE3       string,
+WIN2RATE4       string,
+WIN2RATE5       string,
+WIN2RATE6       string,
+WIN3RATE1       string,
+WIN3RATE2       string,
+WIN3RATE3       string,
+WIN3RATE4       string,
+WIN3RATE5       string,
+WIN3RATE6       string,
+LOCALWIN1RATE1  string,
+LOCALWIN1RATE2  string,
+LOCALWIN1RATE3  string,
+LOCALWIN1RATE4  string,
+LOCALWIN1RATE5  string,
+LOCALWIN1RATE6  string,
+LOCALWIN2RATE1  string,
+LOCALWIN2RATE2  string,
+LOCALWIN2RATE3  string,
+LOCALWIN2RATE4  string,
+LOCALWIN2RATE5  string,
+LOCALWIN2RATE6  string,
+LOCALWIN3RATE1  string,
+LOCALWIN3RATE2  string,
+LOCALWIN3RATE3  string,
+LOCALWIN3RATE4  string,
+LOCALWIN3RATE5  string,
+LOCALWIN3RATE6  string,
+MOTORWIN2RATE1  string,
+MOTORWIN2RATE2  string,
+MOTORWIN2RATE3  string,
+MOTORWIN2RATE4  string,
+MOTORWIN2RATE5  string,
+MOTORWIN2RATE6  string,
+MOTORWIN3RATE1  string,
+MOTORWIN3RATE2  string,
+MOTORWIN3RATE3  string,
+MOTORWIN3RATE4  string,
+MOTORWIN3RATE5  string,
+MOTORWIN3RATE6  string,
+BOATWIN2RATE1   string,
+BOATWIN2RATE2   string,
+BOATWIN2RATE3   string,
+BOATWIN2RATE4   string,
+BOATWIN2RATE5   string,
+BOATWIN2RATE6   string,
+BOATWIN3RATE1   string,
+BOATWIN3RATE2   string,
+BOATWIN3RATE3   string,
+BOATWIN3RATE4   string,
+BOATWIN3RATE5   string,
+BOATWIN3RATE6   string,
+ST_AVG1 string,
+ST_AVG2 string,
+ST_AVG3 string,
+ST_AVG4 string,
+ST_AVG5 string,
+ST_AVG6 string
+);
+
+-- COMMAND ----------
+
+CREATE TABLE IF NOT EXISTS RESULT
+(
+RACEDATE        string,
+PLACE   string,
+RACE    string,
+RENTAN3 string,
+RENTAN3K        string,
+RENFUKU3        string,
+RENFUKU3K       string,
+RENTAN2 string,
+RENTAN2K        string,
+RENFUKU2        string,
+RENFUKU2K       string,
+WIDE1   string,
+WIDE1K  string,
+WIDE2   string,
+WIDE2K  string,
+WIDE3   string,
+WIDE3K  string,
+TAN     string,
+TANK    string,
+FUKU1   string,
+FUKU1K  string,
+FUKU2   string,
+FUKU2K  string,
+EOL     string
+);
+
+-- COMMAND ----------
+
+optimize BANGUMI;
+
+-- COMMAND ----------
+
+optimize RESULT;
+
+-- COMMAND ----------
+
+select racedate,count(1) from bangumi group by 1 order by 1;
+
+-- COMMAND ----------
+
+-- DBTITLE 1,データ取得範囲を指定するウィジット表示
+-- MAGIC %python
+-- MAGIC #ウィジットクリア
+-- MAGIC dbutils.widgets.removeAll()
+-- MAGIC
+-- MAGIC #　年リスト作成
+-- MAGIC years = sqlContext.sql(\
+-- MAGIC "         select '2015' as year \
+-- MAGIC union all select '2016' \
+-- MAGIC union all select '2017' \
+-- MAGIC union all select '2018' \
+-- MAGIC union all select '2019' \
+-- MAGIC union all select '2020' \
+-- MAGIC union all select '2021' \
+-- MAGIC union all select '2022' \
+-- MAGIC union all select '2023' \
+-- MAGIC ").rdd.map(lambda row : row[0]).collect()
+-- MAGIC
+-- MAGIC #　月リスト作成
+-- MAGIC months = sqlContext.sql(\
+-- MAGIC "         select '01' as month \
+-- MAGIC union all select '02' \
+-- MAGIC union all select '03' \
+-- MAGIC union all select '04' \
+-- MAGIC union all select '05' \
+-- MAGIC union all select '06' \
+-- MAGIC union all select '07' \
+-- MAGIC union all select '08' \
+-- MAGIC union all select '09' \
+-- MAGIC union all select '10' \
+-- MAGIC union all select '11' \
+-- MAGIC union all select '12' \
+-- MAGIC ").rdd.map(lambda row : row[0]).collect()
+-- MAGIC
+-- MAGIC #　日リスト作成
+-- MAGIC days = sqlContext.sql(\
+-- MAGIC "         select '01' as day \
+-- MAGIC union all select '02' \
+-- MAGIC union all select '03' \
+-- MAGIC union all select '04' \
+-- MAGIC union all select '05' \
+-- MAGIC union all select '06' \
+-- MAGIC union all select '07' \
+-- MAGIC union all select '08' \
+-- MAGIC union all select '09' \
+-- MAGIC union all select '10' \
+-- MAGIC union all select '11' \
+-- MAGIC union all select '12' \
+-- MAGIC union all select '13' \
+-- MAGIC union all select '14' \
+-- MAGIC union all select '15' \
+-- MAGIC union all select '16' \
+-- MAGIC union all select '17' \
+-- MAGIC union all select '18' \
+-- MAGIC union all select '19' \
+-- MAGIC union all select '20' \
+-- MAGIC union all select '21' \
+-- MAGIC union all select '22' \
+-- MAGIC union all select '23' \
+-- MAGIC union all select '24' \
+-- MAGIC union all select '25' \
+-- MAGIC union all select '26' \
+-- MAGIC union all select '27' \
+-- MAGIC union all select '28' \
+-- MAGIC union all select '29' \
+-- MAGIC union all select '30' \
+-- MAGIC union all select '31' \
+-- MAGIC ").rdd.map(lambda row : row[0]).collect()
+-- MAGIC
+-- MAGIC #　レース場リスト作成
+-- MAGIC places = sqlContext.sql(\
+-- MAGIC "         select 'ALL' as place \
+-- MAGIC union all select '01' \
+-- MAGIC union all select '02' \
+-- MAGIC union all select '03' \
+-- MAGIC union all select '04' \
+-- MAGIC union all select '05' \
+-- MAGIC union all select '06' \
+-- MAGIC union all select '07' \
+-- MAGIC union all select '08' \
+-- MAGIC union all select '09' \
+-- MAGIC union all select '10' \
+-- MAGIC union all select '11' \
+-- MAGIC union all select '12' \
+-- MAGIC union all select '13' \
+-- MAGIC union all select '14' \
+-- MAGIC union all select '15' \
+-- MAGIC union all select '16' \
+-- MAGIC union all select '17' \
+-- MAGIC union all select '18' \
+-- MAGIC union all select '19' \
+-- MAGIC union all select '20' \
+-- MAGIC union all select '21' \
+-- MAGIC union all select '22' \
+-- MAGIC union all select '23' \
+-- MAGIC union all select '24' \
+-- MAGIC ").rdd.map(lambda row : row[0]).collect()
+-- MAGIC
+-- MAGIC #　レース
+-- MAGIC races = sqlContext.sql(\
+-- MAGIC "         select 'ALL' as race \
+-- MAGIC union all select '1' \
+-- MAGIC union all select '2' \
+-- MAGIC union all select '3' \
+-- MAGIC union all select '4' \
+-- MAGIC union all select '5' \
+-- MAGIC union all select '6' \
+-- MAGIC union all select '7' \
+-- MAGIC union all select '8' \
+-- MAGIC union all select '9' \
+-- MAGIC union all select '10' \
+-- MAGIC union all select '11' \
+-- MAGIC union all select '12' \
+-- MAGIC ").rdd.map(lambda row : row[0]).collect()
+-- MAGIC
+-- MAGIC #　デバッグフラグ
+-- MAGIC debug = sqlContext.sql(\
+-- MAGIC "         select 'YES' as year \
+-- MAGIC union all select 'NO' \
+-- MAGIC ").rdd.map(lambda row : row[0]).collect()
+-- MAGIC
+-- MAGIC #データ取集開始日
+-- MAGIC dbutils.widgets.dropdown("START_YYYY", "2015", [str(x) for x in years],"(1)取得開始年")
+-- MAGIC dbutils.widgets.dropdown("START_MM", "01", [str(x) for x in months],"(2)取得開始月")
+-- MAGIC dbutils.widgets.dropdown("START_DD", "01", [str(x) for x in days],"(3)取得開始日")
+-- MAGIC
+-- MAGIC #データ収集終了日
+-- MAGIC dbutils.widgets.dropdown("END_YYYY", "2015", [str(x) for x in years],"(4)取得終了年")
+-- MAGIC dbutils.widgets.dropdown("END_MM", "01", [str(x) for x in months],"(5)取得終了月")
+-- MAGIC dbutils.widgets.dropdown("END_DD", "01", [str(x) for x in days],"(6)取得終了日")
+-- MAGIC
+-- MAGIC #レース場コード
+-- MAGIC dbutils.widgets.dropdown("PLACE", "ALL", [str(x) for x in places],"(7)レース場コード")
+-- MAGIC
+-- MAGIC #レース
+-- MAGIC dbutils.widgets.dropdown("RACE", "ALL", [str(x) for x in races],"(8)レース")
+-- MAGIC
+-- MAGIC #デバッグフラグ
+-- MAGIC dbutils.widgets.dropdown("DEBUG", "NO", [str(x) for x in debug],"(9)デバッグ")
+
+-- COMMAND ----------
+
+-- DBTITLE 1,正規表現のテスト
+-- MAGIC %python
+-- MAGIC text = '１,4203,B1,小倉康典,群馬,群馬,39,51.0,0,0,0.19,4.12,21.62,29.73,3.68,17.07,26.83,37,31.29,51.02,87,31.72,44.14, ,3,8, , , , , , , , , , , , ,3,2, , , , , , , , , , , , ,.15,.20, , , , , , , , , , , , ,６,２,,,,,２,3868,B1,尾形栄治,東京,東京,46,52.3,0,0,0.18,5.41,35.11,56.38,5.24,34.55,49.09,54,25.21,40.34,35,36.62,52.11, ,2,10, , , , , , , , , , , , ,8R,5,4, , , , , , , , , , , , ,.26,.22, , , , , , , , , , , , ,３,３,,,,,３,4943,B1,八木治樹,愛知,愛知,30,52.2,0,0,0.18,3.85,16.18,27.94,4.26,17.39,34.78,14,28.03,45.45,40,40.71,59.29, ,3, , , , , , , , , , , , , ,7R,4, , , , , , , , , , , , , ,.06, , , , , , , , , , , , , ,３,,,,,４,4276,A1,鈴木勝博,愛知,愛知,38,51.5,0,0,0.13,7.27,63.16,73.68,6.63,56.25,65.63,66,28.26,47.10,73,38.19,53.47, ,5,12, , , , , , , , , , , , ,9R,3,1, , , , , , , , , , , , ,.15,.16, , , , , , , , , , , , ,１,５,,,,,５,5183,B2,中野孝二,三重,三重,23,54.9,0,0,0.18,1.48,0.00,3.23,0.00,0.00,0.00,15,28.15,45.93,79,27.64,41.46, ,4, , , , , , , , , , , , , ,6R,6, , , , , , , , , , , , , ,.12, , , , , , , , , , , , , ,５,,,,,６,3842,A2,星野太郎,三重,三重,45,52.6,0,0,0.17,5.62,32.43,55.86,5.64,35.71,57.14,59,26.87,47.76,31,37.76,53.15, ,1,9, , , , , , , , , , , , ,12R,4,1, , , , , , , , , , , , ,.10,.15, , , , , , , , , , , , ,３,１,,,, '
+-- MAGIC
+-- MAGIC # 連続した小文字のアルファベットを検索する
+-- MAGIC matchObj = re.search('１,[0-9].*２,', text)
+-- MAGIC matchObj = re.search('２,[0-9].*３,', text)
+-- MAGIC matchObj = re.search('３,[0-9].*４,', text)
+-- MAGIC matchObj = re.search('４,[0-9].*５,', text)
+-- MAGIC matchObj = re.search('５,[0-9].*６,', text)
+-- MAGIC matchObj = re.search('６,[0-9].*', text)
+-- MAGIC
+-- MAGIC if matchObj:
+-- MAGIC     print('1:',matchObj.group()) # マッチした文字列： abc
+-- MAGIC     print('2:',matchObj.start()) # マッチした文字列の開始位置： 3
+-- MAGIC     print('3:',matchObj.end())   # マッチした文字列の終了位置： 6
+-- MAGIC     print('4:',matchObj.span())  # マッチした文字列の開始位置と終了位置： (3, 6)
+
+-- COMMAND ----------
+
+-- MAGIC %md ## データ取得範囲を確認
+
+-- COMMAND ----------
+
+-- DBTITLE 1,データ取得範囲をセット
+-- MAGIC %python
+-- MAGIC from datetime import date, timedelta
+-- MAGIC import datetime
+-- MAGIC import time
+-- MAGIC
+-- MAGIC # スクレイピング範囲を指定
+-- MAGIC # int型の変数にセット
+-- MAGIC START_YYYY = int(dbutils.widgets.get("START_YYYY"))
+-- MAGIC START_MM = int(dbutils.widgets.get("START_MM"))
+-- MAGIC START_DD = int(dbutils.widgets.get("START_DD"))
+-- MAGIC
+-- MAGIC END_YYYY = int(dbutils.widgets.get("END_YYYY"))
+-- MAGIC END_MM = int(dbutils.widgets.get("END_MM"))
+-- MAGIC END_DD = int(dbutils.widgets.get("END_DD"))
+-- MAGIC
+-- MAGIC print("START_YYYY=",START_YYYY)
+-- MAGIC print("START_MM=",  START_MM)
+-- MAGIC print("START_DD=",  START_DD)
+-- MAGIC
+-- MAGIC #print("終了")
+-- MAGIC print("END_YYYY=",END_YYYY)
+-- MAGIC print("END_MM=",  END_MM)
+-- MAGIC print("END_DD=",  END_DD)
+-- MAGIC
+-- MAGIC # 引数を変数にセット
+-- MAGIC kaisaibi = date(START_YYYY,START_MM,START_DD)
+-- MAGIC place=dbutils.widgets.get("PLACE")
+-- MAGIC race=dbutils.widgets.get("RACE")
+-- MAGIC
+-- MAGIC # 場所コードの変換
+-- MAGIC if place == "01": placename="桐生"
+-- MAGIC if place == "02": placename="戸田"
+-- MAGIC if place == "03": placename="江戸川"
+-- MAGIC if place == "04": placename="平和島"
+-- MAGIC if place == "05": placename="多摩川"
+-- MAGIC if place == "06": placename="浜名湖"
+-- MAGIC if place == "07": placename="蒲郡"
+-- MAGIC if place == "08": placename="常滑"
+-- MAGIC if place == "09": placename="津"
+-- MAGIC if place == "10": placename="三国"
+-- MAGIC if place == "11": placename="琵琶湖"
+-- MAGIC if place == "12": placename="住之江"
+-- MAGIC if place == "13": placename="尼崎"
+-- MAGIC if place == "14": placename="鳴門"
+-- MAGIC if place == "15": placename="丸亀"
+-- MAGIC if place == "16": placename="児島"
+-- MAGIC if place == "17": placename="宮島"
+-- MAGIC if place == "18": placename="徳山"
+-- MAGIC if place == "19": placename="下関"
+-- MAGIC if place == "20": placename="若松"
+-- MAGIC if place == "21": placename="芦屋"
+-- MAGIC if place == "22": placename="福岡"
+-- MAGIC if place == "23": placename="唐津"
+-- MAGIC if place == "24": placename="大村" 
+-- MAGIC if place == "ALL": placename="ALL"
+-- MAGIC
+-- MAGIC
+-- MAGIC #場所の範囲をリスト化
+-- MAGIC if place == "01": place_list = ["01"]
+-- MAGIC if place == "02": place_list = ["02"]
+-- MAGIC if place == "03": place_list = ["03"]
+-- MAGIC if place == "04": place_list = ["04"]
+-- MAGIC if place == "05": place_list = ["05"]
+-- MAGIC if place == "06": place_list = ["06"]
+-- MAGIC if place == "07": place_list = ["07"]
+-- MAGIC if place == "08": place_list = ["08"]
+-- MAGIC if place == "09": place_list = ["09"]
+-- MAGIC if place == "10": place_list = ["10"]
+-- MAGIC if place == "11": place_list = ["11"]
+-- MAGIC if place == "12": place_list = ["12"]
+-- MAGIC if place == "13": place_list = ["13"]
+-- MAGIC if place == "14": place_list = ["14"]
+-- MAGIC if place == "15": place_list = ["15"]
+-- MAGIC if place == "16": place_list = ["16"]
+-- MAGIC if place == "17": place_list = ["17"]
+-- MAGIC if place == "18": place_list = ["18"]
+-- MAGIC if place == "19": place_list = ["19"]
+-- MAGIC if place == "20": place_list = ["20"]
+-- MAGIC if place == "21": place_list = ["21"]
+-- MAGIC if place == "22": place_list = ["22"]
+-- MAGIC if place == "23": place_list = ["23"]
+-- MAGIC if place == "24": place_list = ["24"]
+-- MAGIC if place == "ALL": place_list = ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24"]
+-- MAGIC #print(place_list)
+-- MAGIC
+-- MAGIC #レースの範囲をリスト化
+-- MAGIC if race == "1": race_list = ["1"]
+-- MAGIC if race == "2": race_list = ["2"]
+-- MAGIC if race == "3": race_list = ["3"]
+-- MAGIC if race == "4": race_list = ["4"]
+-- MAGIC if race == "5": race_list = ["5"]
+-- MAGIC if race == "6": race_list = ["6"]
+-- MAGIC if race == "7": race_list = ["7"]
+-- MAGIC if race == "8": race_list = ["8"]
+-- MAGIC if race == "9": race_list = ["9"]
+-- MAGIC if race == "10": race_list = ["10"]
+-- MAGIC if race == "11": race_list = ["11"]
+-- MAGIC if race == "12": race_list = ["12"]
+-- MAGIC if race == "ALL": race_list  = ["1","2","3","4","5","6","7","8","9","10","11","12"]
+-- MAGIC #print(race_list)
+-- MAGIC   
+-- MAGIC print ("開催日:" + str(kaisaibi) )
+-- MAGIC print ("場所コード:" + place + "(" + placename + ")")
+-- MAGIC print ("レース:" + race )
+
+-- COMMAND ----------
+
+-- MAGIC %md ## 関数1 番組表取得
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import col
+-- MAGIC
+-- MAGIC def bangumi(url1):
+-- MAGIC   
+-- MAGIC   fields1 = [
+-- MAGIC     "RACEDATE",
+-- MAGIC     "PLACE", 
+-- MAGIC     "RACE", 
+-- MAGIC     "BOAT", 
+-- MAGIC     "PLAYERID",
+-- MAGIC     "CLASS", 
+-- MAGIC     "NAME", 
+-- MAGIC     "CLUB", 
+-- MAGIC     "BIRTHPLACE", 
+-- MAGIC     "AGE",
+-- MAGIC     "WEIGHT",
+-- MAGIC     "F", 
+-- MAGIC     "L", 
+-- MAGIC     "ST", 
+-- MAGIC     "WIN1RATE", 
+-- MAGIC     "WIN2RATE", 
+-- MAGIC     "WIN3RATE", 
+-- MAGIC     "LOCALWIN1RATE", 
+-- MAGIC     "LOCALWIN2RATE", 
+-- MAGIC     "LOCALWIN3RATE",
+-- MAGIC     "MOTORID",
+-- MAGIC     "MOTORWIN2RATE", 
+-- MAGIC     "MOTORWIN3RATE", 
+-- MAGIC     "BOATID", 
+-- MAGIC     "BOATWIN2RATE", 
+-- MAGIC     "BOATWIN3RATE"
+-- MAGIC   ]
+-- MAGIC
+-- MAGIC   # 空のデータフレーム作成
+-- MAGIC   # 上のスキーマでデータフレームを生成
+-- MAGIC   bangumi_df = pd.DataFrame(index=[], columns=fields1)
+-- MAGIC   if dbutils.widgets.get("DEBUG") == "YES": print("\n","dfの要素数=", len(bangumi_df.columns),"\n")
+-- MAGIC
+-- MAGIC   # BeattifulSoupで認識したレコード数
+-- MAGIC   rid = 0
+-- MAGIC  
+-- MAGIC   # レスポンス取得
+-- MAGIC   response = requests.get(url1)
+-- MAGIC   response.encoding = response.apparent_encoding
+-- MAGIC
+-- MAGIC   # HTMLを解析
+-- MAGIC   bs = BeautifulSoup(response.text, 'html.parser')
+-- MAGIC
+-- MAGIC   # チェック
+-- MAGIC   if bs.getText().find("表示条件を変更してもう一度処理を行ってください。") > 0:
+-- MAGIC     if dbutils.widgets.get("DEBUG") == "YES": print("データなし")
+-- MAGIC     return("データなし")
+-- MAGIC   
+-- MAGIC   # テキストを解析
+-- MAGIC   for i in bs.select("table"):
+-- MAGIC           
+-- MAGIC         # \r\n が改行なのでまず\rを除外して通常の\nにする
+-- MAGIC         text01 = i.getText().replace("\r" , "")
+-- MAGIC
+-- MAGIC         # ブランクを除外
+-- MAGIC         text02 = text01.replace(" " , "")
+-- MAGIC
+-- MAGIC         # ２バイトブランクを除外
+-- MAGIC         text03 = text02.replace("　" , "")
+-- MAGIC
+-- MAGIC         # \nを,\nにする
+-- MAGIC         #text04 = text03.replace("\n" , ",\n")
+-- MAGIC         text04 = text03.replace("\n" , ",")
+-- MAGIC
+-- MAGIC         # ブランク+,を,にする
+-- MAGIC         text05 = text04.replace(" ," , ",")
+-- MAGIC
+-- MAGIC         # -を0.33にする(平均ST対応)
+-- MAGIC         text05x = text05.replace("-" , "0.33")
+-- MAGIC         text05  = text05x
+-- MAGIC
+-- MAGIC         # 正規表現で1艇目を取得 正規表現の後方参照を使用
+-- MAGIC         text06 = re.sub(r'１,,,,,,([0-9])' , r'\n1,\1',text05)
+-- MAGIC
+-- MAGIC         # 正規表現で2艇目を取得 正規表現の後方参照を使用
+-- MAGIC         text07 = re.sub(r'２,,,,,,([0-9])' , r'\n2,\1',text06)
+-- MAGIC
+-- MAGIC         # 正規表現で3艇目を取得 正規表現の後方参照を使用
+-- MAGIC         text08 = re.sub(r'３,,,,,,([0-9])' , r'\n3,\1',text07)
+-- MAGIC
+-- MAGIC         # 正規表現で4艇目を取得 正規表現の後方参照を使用
+-- MAGIC         text09 = re.sub(r'４,,,,,,([0-9])' , r'\n4,\1',text08)
+-- MAGIC
+-- MAGIC         # 正規表現で5艇目を取得 正規表現の後方参照を使用
+-- MAGIC         text10 = re.sub(r'５,,,,,,([0-9])' , r'\n5,\1',text09)
+-- MAGIC
+-- MAGIC         # 正規表現で6艇目を取得 正規表現の後方参照を使用
+-- MAGIC         text11 = re.sub(r'６,,,,,,([0-9])' , r'\n6,\1',text10)
+-- MAGIC
+-- MAGIC         # / を,に変換
+-- MAGIC         text12 = re.sub(r'/' , r',',text11)
+-- MAGIC
+-- MAGIC         # ,, を,に変換(１回目)
+-- MAGIC         text13 = re.sub(r',,' , r',',text12)
+-- MAGIC
+-- MAGIC         # ,, を,に変換(２回目)
+-- MAGIC         text14 = re.sub(r',,' , r',',text13)
+-- MAGIC
+-- MAGIC         # kg を""に変換
+-- MAGIC         text15 = re.sub(r'kg' , r'',text14)
+-- MAGIC
+-- MAGIC         # 歳 を""に変換
+-- MAGIC         text16 = re.sub(r"歳" , r'',text15)
+-- MAGIC
+-- MAGIC         # F を""に変換
+-- MAGIC         text17 = re.sub(r"F" , r'',text16)
+-- MAGIC
+-- MAGIC         # L を""に変換
+-- MAGIC         text18 = re.sub(r"L" , r'',text17)
+-- MAGIC
+-- MAGIC         # 事前編集後
+-- MAGIC         text  = text18
+-- MAGIC         #print(text)
+-- MAGIC         work = []
+-- MAGIC         work = text.splitlines() 
+-- MAGIC         
+-- MAGIC         # レコード
+-- MAGIC         data1 = []
+-- MAGIC         data1 = text.splitlines()
+-- MAGIC         data2 = [0] * 6 
+-- MAGIC
+-- MAGIC         # 事前編集後
+-- MAGIC         work = []
+-- MAGIC         work = text.splitlines() 
+-- MAGIC
+-- MAGIC         # レコード
+-- MAGIC         work_col = []
+-- MAGIC
+-- MAGIC         # 処理したレコードをカウント
+-- MAGIC         rid=rid+1
+-- MAGIC
+-- MAGIC         # 2レコード目から必要な情報を取得
+-- MAGIC         if rid==2: 
+-- MAGIC
+-- MAGIC                 # 要素数だけループ処理 
+-- MAGIC                 # 2022/05/22 要素数が1になってた
+-- MAGIC                 # 2022/05/22 数字が大文字になってた
+-- MAGIC                 # 変換テーブル
+-- MAGIC                 trans_table = str.maketrans({"１":"1","２":"2","３":"3","４":"4","５":"5","６":"6" })
+-- MAGIC             
+-- MAGIC                 # 出力するCSVのフォーマットが合わないといけない
+-- MAGIC                 if dbutils.widgets.get("DEBUG") == "YES": print("[要素数=", len(work),"]")
+-- MAGIC                 for i in range(0,len(work)):
+-- MAGIC
+-- MAGIC                         # 値をセット
+-- MAGIC                         rec1 = work[i] 
+-- MAGIC                         if dbutils.widgets.get("DEBUG") == "YES": print("[",rec1,"]")
+-- MAGIC
+-- MAGIC                         # １号艇
+-- MAGIC                         # 2022/05/22 数字が大文字になってた
+-- MAGIC                         if rec1.find('１,') >= 0: 
+-- MAGIC                                 data1[0] = rec1[rec1.find('１,'):]
+-- MAGIC                                 # 正規表現
+-- MAGIC                                 matchObj = re.search('１,[0-9].*２,', data1[0])
+-- MAGIC                                 # 変数に入れ直す
+-- MAGIC                                 data1[0] = matchObj.group().translate(trans_table)
+-- MAGIC                                 # 必要な要素数だけループ処理 
+-- MAGIC                                 work_col = data1[0].split(",")
+-- MAGIC                                 # 開催日、場所、ラウンドを入れておく
+-- MAGIC                                 data2[0] = kaisaibi + ","  + place + "," + race + ","
+-- MAGIC                                 # カラムをセット
+-- MAGIC                                 j=0
+-- MAGIC                                 for j in range(0,23):
+-- MAGIC                                         # 登録番号はカテゴリ型として扱う
+-- MAGIC                                         if j==1: work_col[j] = 'p' + work_col[j]
+-- MAGIC                                 # レコード生成
+-- MAGIC                                 record=pd.Series(
+-- MAGIC                                   [
+-- MAGIC                                    kaisaibi,
+-- MAGIC                                    place,
+-- MAGIC                                    #placename,
+-- MAGIC                                    race,
+-- MAGIC                                    work_col[0],
+-- MAGIC                                    work_col[1],
+-- MAGIC                                    work_col[2],
+-- MAGIC                                    work_col[3],
+-- MAGIC                                    work_col[4],
+-- MAGIC                                    work_col[5],
+-- MAGIC                                    work_col[6],
+-- MAGIC                                    work_col[7],
+-- MAGIC                                    work_col[8],
+-- MAGIC                                    work_col[9],
+-- MAGIC                                    work_col[10],
+-- MAGIC                                    work_col[11],
+-- MAGIC                                    work_col[12],
+-- MAGIC                                    work_col[13],
+-- MAGIC                                    work_col[14],
+-- MAGIC                                    work_col[15],
+-- MAGIC                                    work_col[16],
+-- MAGIC                                    work_col[17],
+-- MAGIC                                    work_col[18],
+-- MAGIC                                    work_col[19],
+-- MAGIC                                    work_col[20],
+-- MAGIC                                    work_col[21],
+-- MAGIC                                    work_col[22]
+-- MAGIC                                   ], 
+-- MAGIC                                   # index=df.columns)
+-- MAGIC                                   index = fields1)
+-- MAGIC                                 # データフレームに追加
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("COLDATA1=", record,"]")
+-- MAGIC                                 # (1)Seriesをデータフレームに変換する
+-- MAGIC                                 df  = record.to_frame()
+-- MAGIC                                 df.reset_index(inplace= True)
+-- MAGIC                                 df = df.rename(columns={'index': 'col_name'})
+-- MAGIC                                 df = df.rename(columns={0: 'values'})
+-- MAGIC
+-- MAGIC                                 # (2)新規に識別キーとなる列を追加
+-- MAGIC                                 df['id']=work_col[0]
+-- MAGIC                                 
+-- MAGIC                                 # (3)縦持ちデータを横持ちデータに変換する
+-- MAGIC                                 pivot_df = df.pivot_table(values=['values'], index=['id'], columns=['col_name'], aggfunc='max').reset_index(drop=True)
+-- MAGIC                                 
+-- MAGIC                                 # (4)階層インデックスを排除
+-- MAGIC                                 sdf = spark.createDataFrame(pivot_df).createOrReplaceTempView("bangumi_1")
+-- MAGIC                                 data = sql("""select 
+-- MAGIC                                 `('values', 'AGE')` as AGE,
+-- MAGIC                                 `('values', 'BIRTHPLACE')` AS BIRTHPLACE,
+-- MAGIC                                 `('values', 'BOAT')` AS BOAT,
+-- MAGIC                                 `('values', 'BOATID')` AS BOATID,
+-- MAGIC                                 `('values', 'BOATWIN2RATE')` AS BOATWIN2RATE,
+-- MAGIC                                 `('values', 'BOATWIN3RATE')` AS BOATWIN3RATE,
+-- MAGIC                                 `('values', 'CLASS')` AS CLASS,
+-- MAGIC                                 `('values', 'CLUB')` AS CLUB,
+-- MAGIC                                 `('values', 'F')` AS F,
+-- MAGIC                                 `('values', 'L')` AS L,
+-- MAGIC                                 `('values', 'LOCALWIN1RATE')` AS LOCALWIN1RATE,
+-- MAGIC                                 `('values', 'LOCALWIN2RATE')` AS LOCALWIN2RATE,
+-- MAGIC                                 `('values', 'LOCALWIN3RATE')` AS LOCALWIN3RATE,
+-- MAGIC                                 `('values', 'MOTORID')` AS MOTORID,
+-- MAGIC                                 `('values', 'MOTORWIN2RATE')` AS MOTORWIN2RATE,
+-- MAGIC                                 `('values', 'MOTORWIN3RATE')` AS MOTORWIN3RATE,
+-- MAGIC                                 `('values', 'NAME')` AS NAME,
+-- MAGIC                                 `('values', 'PLACE')` AS PLACE,
+-- MAGIC                                 `('values', 'PLAYERID')` AS PLAYERID,
+-- MAGIC                                 `('values', 'RACE')` AS RACE,
+-- MAGIC                                 `('values', 'RACEDATE')` AS RACEDATE,
+-- MAGIC                                 `('values', 'ST')` AS ST,
+-- MAGIC                                 `('values', 'WEIGHT')` AS WEIGHT,
+-- MAGIC                                 `('values', 'WIN1RATE')` AS WIN1RATE,
+-- MAGIC                                 `('values', 'WIN2RATE')` AS WIN2RATE,
+-- MAGIC                                 `('values', 'WIN3RATE')` AS WIN3RATE
+-- MAGIC                                 from bangumi_1
+-- MAGIC                                 """).toPandas()
+-- MAGIC                                 
+-- MAGIC                                 #(5) 共通データフレームに追加
+-- MAGIC                                 bangumi_df = pd.concat([bangumi_df,data],ignore_index=True)
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("1号艇取得終了！")                                
+-- MAGIC
+-- MAGIC                         # 2号艇             
+-- MAGIC                         if rec1.find('１,') >= 0: 
+-- MAGIC                                 data1[0] = rec1[rec1.find('１,'):]
+-- MAGIC                                 # 正規表現
+-- MAGIC                                 matchObj = re.search('２,[0-9].*３,', data1[0])
+-- MAGIC                                 # 変数に入れ直す
+-- MAGIC                                 data1[0] = matchObj.group().translate(trans_table)
+-- MAGIC                                 # 必要な要素数だけループ処理 
+-- MAGIC                                 work_col = data1[0].split(",")
+-- MAGIC                                 # 開催日、場所、ラウンドを入れておく
+-- MAGIC                                 data2[0] = kaisaibi + ","  + place + "," + race + ","
+-- MAGIC                                 # カラムをセット
+-- MAGIC                                 j=0
+-- MAGIC                                 for j in range(0,23):
+-- MAGIC                                         # 登録番号はカテゴリ型として扱う
+-- MAGIC                                         if j==1: work_col[j] = 'p' + work_col[j]
+-- MAGIC                                 # レコード生成
+-- MAGIC                                 record=pd.Series(
+-- MAGIC                                   [
+-- MAGIC                                    kaisaibi,
+-- MAGIC                                    place,
+-- MAGIC                                    race,
+-- MAGIC                                    work_col[0],
+-- MAGIC                                    work_col[1],
+-- MAGIC                                    work_col[2],
+-- MAGIC                                    work_col[3],
+-- MAGIC                                    work_col[4],
+-- MAGIC                                    work_col[5],
+-- MAGIC                                    work_col[6],
+-- MAGIC                                    work_col[7],
+-- MAGIC                                    work_col[8],
+-- MAGIC                                    work_col[9],
+-- MAGIC                                    work_col[10],
+-- MAGIC                                    work_col[11],
+-- MAGIC                                    work_col[12],
+-- MAGIC                                    work_col[13],
+-- MAGIC                                    work_col[14],
+-- MAGIC                                    work_col[15],
+-- MAGIC                                    work_col[16],
+-- MAGIC                                    work_col[17],
+-- MAGIC                                    work_col[18],
+-- MAGIC                                    work_col[19],
+-- MAGIC                                    work_col[20],
+-- MAGIC                                    work_col[21],
+-- MAGIC                                    work_col[22]
+-- MAGIC                                   ], 
+-- MAGIC                                    # index=df.columns)
+-- MAGIC                                   index = fields1)
+-- MAGIC                                 # データフレームに追加
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("COLDATA1=", record,"]")
+-- MAGIC                                 # (1)Seriesをデータフレームに変換する
+-- MAGIC                                 df  = record.to_frame()
+-- MAGIC                                 df.reset_index(inplace= True)
+-- MAGIC                                 df = df.rename(columns={'index': 'col_name'})
+-- MAGIC                                 df = df.rename(columns={0: 'values'})
+-- MAGIC
+-- MAGIC                                 # (2)新規に識別キーとなる列を追加
+-- MAGIC                                 df['id']=work_col[0]
+-- MAGIC                                 
+-- MAGIC                                 # (3)縦持ちデータを横持ちデータに変換する
+-- MAGIC                                 pivot_df = df.pivot_table(values=['values'], index=['id'], columns=['col_name'], aggfunc='max').reset_index(drop=True)
+-- MAGIC                                 
+-- MAGIC                                 # (4)階層インデックスを排除
+-- MAGIC                                 sdf = spark.createDataFrame(pivot_df).createOrReplaceTempView("bangumi_1")
+-- MAGIC                                 data = sql("""select 
+-- MAGIC                                 `('values', 'AGE')` as AGE,
+-- MAGIC                                 `('values', 'BIRTHPLACE')` AS BIRTHPLACE,
+-- MAGIC                                 `('values', 'BOAT')` AS BOAT,
+-- MAGIC                                 `('values', 'BOATID')` AS BOATID,
+-- MAGIC                                 `('values', 'BOATWIN2RATE')` AS BOATWIN2RATE,
+-- MAGIC                                 `('values', 'BOATWIN3RATE')` AS BOATWIN3RATE,
+-- MAGIC                                 `('values', 'CLASS')` AS CLASS,
+-- MAGIC                                 `('values', 'CLUB')` AS CLUB,
+-- MAGIC                                 `('values', 'F')` AS F,
+-- MAGIC                                 `('values', 'L')` AS L,
+-- MAGIC                                 `('values', 'LOCALWIN1RATE')` AS LOCALWIN1RATE,
+-- MAGIC                                 `('values', 'LOCALWIN2RATE')` AS LOCALWIN2RATE,
+-- MAGIC                                 `('values', 'LOCALWIN3RATE')` AS LOCALWIN3RATE,
+-- MAGIC                                 `('values', 'MOTORID')` AS MOTORID,
+-- MAGIC                                 `('values', 'MOTORWIN2RATE')` AS MOTORWIN2RATE,
+-- MAGIC                                 `('values', 'MOTORWIN3RATE')` AS MOTORWIN3RATE,
+-- MAGIC                                 `('values', 'NAME')` AS NAME,
+-- MAGIC                                 `('values', 'PLACE')` AS PLACE,
+-- MAGIC                                 `('values', 'PLAYERID')` AS PLAYERID,
+-- MAGIC                                 `('values', 'RACE')` AS RACE,
+-- MAGIC                                 `('values', 'RACEDATE')` AS RACEDATE,
+-- MAGIC                                 `('values', 'ST')` AS ST,
+-- MAGIC                                 `('values', 'WEIGHT')` AS WEIGHT,
+-- MAGIC                                 `('values', 'WIN1RATE')` AS WIN1RATE,
+-- MAGIC                                 `('values', 'WIN2RATE')` AS WIN2RATE,
+-- MAGIC                                 `('values', 'WIN3RATE')` AS WIN3RATE
+-- MAGIC                                 from bangumi_1
+-- MAGIC                                 """).toPandas()
+-- MAGIC                                 
+-- MAGIC                                 #(5) 共通データフレームに追加
+-- MAGIC                                 bangumi_df = pd.concat([bangumi_df,data],ignore_index=True)
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("2号艇取得終了！")
+-- MAGIC                                 
+-- MAGIC                         # 3号艇
+-- MAGIC                         if rec1.find('１,') >= 0: 
+-- MAGIC                                 data1[0] = rec1[rec1.find('１,'):]
+-- MAGIC                                 # 正規表現
+-- MAGIC                                 matchObj = re.search('３,[0-9].*４,', data1[0])
+-- MAGIC                                 # 変数に入れ直す
+-- MAGIC                                 data1[0] = matchObj.group().translate(trans_table)
+-- MAGIC                                 # 必要な要素数だけループ処理 
+-- MAGIC                                 work_col = data1[0].split(",")
+-- MAGIC                                 # 開催日、場所、ラウンドを入れておく
+-- MAGIC                                 data2[0] = kaisaibi + ","  + place + "," + race + ","
+-- MAGIC                                 # カラムをセット
+-- MAGIC                                 j=0
+-- MAGIC                                 for j in range(0,23):
+-- MAGIC                                         # 登録番号はカテゴリ型として扱う
+-- MAGIC                                         if j==1: work_col[j] = 'p' + work_col[j]
+-- MAGIC                                 # レコード生成
+-- MAGIC                                 record=pd.Series(
+-- MAGIC                                   [
+-- MAGIC                                    kaisaibi,
+-- MAGIC                                    place,
+-- MAGIC                                    race,
+-- MAGIC                                    work_col[0],
+-- MAGIC                                    work_col[1],
+-- MAGIC                                    work_col[2],
+-- MAGIC                                    work_col[3],
+-- MAGIC                                    work_col[4],
+-- MAGIC                                    work_col[5],
+-- MAGIC                                    work_col[6],
+-- MAGIC                                    work_col[7],
+-- MAGIC                                    work_col[8],
+-- MAGIC                                    work_col[9],
+-- MAGIC                                    work_col[10],
+-- MAGIC                                    work_col[11],
+-- MAGIC                                    work_col[12],
+-- MAGIC                                    work_col[13],
+-- MAGIC                                    work_col[14],
+-- MAGIC                                    work_col[15],
+-- MAGIC                                    work_col[16],
+-- MAGIC                                    work_col[17],
+-- MAGIC                                    work_col[18],
+-- MAGIC                                    work_col[19],
+-- MAGIC                                    work_col[20],
+-- MAGIC                                    work_col[21],
+-- MAGIC                                    work_col[22]
+-- MAGIC                                   ], 
+-- MAGIC                                    # index=df.columns)
+-- MAGIC                                   index = fields1)
+-- MAGIC                                 # データフレームに追加
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("COLDATA1=", record,"]")
+-- MAGIC                                 # (1)Seriesをデータフレームに変換する
+-- MAGIC                                 df  = record.to_frame()
+-- MAGIC                                 df.reset_index(inplace= True)
+-- MAGIC                                 df = df.rename(columns={'index': 'col_name'})
+-- MAGIC                                 df = df.rename(columns={0: 'values'})
+-- MAGIC
+-- MAGIC                                 # (2)新規に識別キーとなる列を追加
+-- MAGIC                                 df['id']=work_col[0]
+-- MAGIC                                 
+-- MAGIC                                 # (3)縦持ちデータを横持ちデータに変換する
+-- MAGIC                                 pivot_df = df.pivot_table(values=['values'], index=['id'], columns=['col_name'], aggfunc='max').reset_index(drop=True)
+-- MAGIC                                 
+-- MAGIC                                 # (4)階層インデックスを排除
+-- MAGIC                                 sdf = spark.createDataFrame(pivot_df).createOrReplaceTempView("bangumi_1")
+-- MAGIC                                 data = sql("""select 
+-- MAGIC                                 `('values', 'AGE')` as AGE,
+-- MAGIC                                 `('values', 'BIRTHPLACE')` AS BIRTHPLACE,
+-- MAGIC                                 `('values', 'BOAT')` AS BOAT,
+-- MAGIC                                 `('values', 'BOATID')` AS BOATID,
+-- MAGIC                                 `('values', 'BOATWIN2RATE')` AS BOATWIN2RATE,
+-- MAGIC                                 `('values', 'BOATWIN3RATE')` AS BOATWIN3RATE,
+-- MAGIC                                 `('values', 'CLASS')` AS CLASS,
+-- MAGIC                                 `('values', 'CLUB')` AS CLUB,
+-- MAGIC                                 `('values', 'F')` AS F,
+-- MAGIC                                 `('values', 'L')` AS L,
+-- MAGIC                                 `('values', 'LOCALWIN1RATE')` AS LOCALWIN1RATE,
+-- MAGIC                                 `('values', 'LOCALWIN2RATE')` AS LOCALWIN2RATE,
+-- MAGIC                                 `('values', 'LOCALWIN3RATE')` AS LOCALWIN3RATE,
+-- MAGIC                                 `('values', 'MOTORID')` AS MOTORID,
+-- MAGIC                                 `('values', 'MOTORWIN2RATE')` AS MOTORWIN2RATE,
+-- MAGIC                                 `('values', 'MOTORWIN3RATE')` AS MOTORWIN3RATE,
+-- MAGIC                                 `('values', 'NAME')` AS NAME,
+-- MAGIC                                 `('values', 'PLACE')` AS PLACE,
+-- MAGIC                                 `('values', 'PLAYERID')` AS PLAYERID,
+-- MAGIC                                 `('values', 'RACE')` AS RACE,
+-- MAGIC                                 `('values', 'RACEDATE')` AS RACEDATE,
+-- MAGIC                                 `('values', 'ST')` AS ST,
+-- MAGIC                                 `('values', 'WEIGHT')` AS WEIGHT,
+-- MAGIC                                 `('values', 'WIN1RATE')` AS WIN1RATE,
+-- MAGIC                                 `('values', 'WIN2RATE')` AS WIN2RATE,
+-- MAGIC                                 `('values', 'WIN3RATE')` AS WIN3RATE
+-- MAGIC                                 from bangumi_1
+-- MAGIC                                 """).toPandas()
+-- MAGIC                                 
+-- MAGIC                                 #(5) 共通データフレームに追加
+-- MAGIC                                 bangumi_df = pd.concat([bangumi_df,data],ignore_index=True)
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("3号艇取得終了！")
+-- MAGIC                                 
+-- MAGIC                         # 4号艇
+-- MAGIC                         if rec1.find('１,') >= 0: 
+-- MAGIC                                 data1[0] = rec1[rec1.find('１,'):]
+-- MAGIC                                 # 正規表現
+-- MAGIC                                 matchObj = re.search('４,[0-9].*５,', data1[0])
+-- MAGIC                                 # 変数に入れ直す
+-- MAGIC                                 data1[0] = matchObj.group().translate(trans_table)
+-- MAGIC                                 # 必要な要素数だけループ処理 
+-- MAGIC                                 work_col = data1[0].split(",")
+-- MAGIC                                 # 開催日、場所、ラウンドを入れておく
+-- MAGIC                                 data2[0] = kaisaibi + ","  + place + "," + race + ","
+-- MAGIC                                 # カラムをセット
+-- MAGIC                                 j=0
+-- MAGIC                                 for j in range(0,23):
+-- MAGIC                                         # 登録番号はカテゴリ型として扱う
+-- MAGIC                                         if j==1: work_col[j] = 'p' + work_col[j]
+-- MAGIC                                 # レコード生成
+-- MAGIC                                 record=pd.Series(
+-- MAGIC                                   [
+-- MAGIC                                    kaisaibi,
+-- MAGIC                                    place,
+-- MAGIC                                    race,
+-- MAGIC                                    work_col[0],
+-- MAGIC                                    work_col[1],
+-- MAGIC                                    work_col[2],
+-- MAGIC                                    work_col[3],
+-- MAGIC                                    work_col[4],
+-- MAGIC                                    work_col[5],
+-- MAGIC                                    work_col[6],
+-- MAGIC                                    work_col[7],
+-- MAGIC                                    work_col[8],
+-- MAGIC                                    work_col[9],
+-- MAGIC                                    work_col[10],
+-- MAGIC                                    work_col[11],
+-- MAGIC                                    work_col[12],
+-- MAGIC                                    work_col[13],
+-- MAGIC                                    work_col[14],
+-- MAGIC                                    work_col[15],
+-- MAGIC                                    work_col[16],
+-- MAGIC                                    work_col[17],
+-- MAGIC                                    work_col[18],
+-- MAGIC                                    work_col[19],
+-- MAGIC                                    work_col[20],
+-- MAGIC                                    work_col[21],
+-- MAGIC                                    work_col[22]
+-- MAGIC                                   ], 
+-- MAGIC                                    # index=df.columns)
+-- MAGIC                                   index = fields1)
+-- MAGIC                                 # データフレームに追加
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("COLDATA1=", record,"]")
+-- MAGIC                                 # (1)Seriesをデータフレームに変換する
+-- MAGIC                                 df  = record.to_frame()
+-- MAGIC                                 df.reset_index(inplace= True)
+-- MAGIC                                 df = df.rename(columns={'index': 'col_name'})
+-- MAGIC                                 df = df.rename(columns={0: 'values'})
+-- MAGIC
+-- MAGIC                                 # (2)新規に識別キーとなる列を追加
+-- MAGIC                                 df['id']=work_col[0]
+-- MAGIC                                 
+-- MAGIC                                 # (3)縦持ちデータを横持ちデータに変換する
+-- MAGIC                                 pivot_df = df.pivot_table(values=['values'], index=['id'], columns=['col_name'], aggfunc='max').reset_index(drop=True)
+-- MAGIC                                 
+-- MAGIC                                 # (4)階層インデックスを排除
+-- MAGIC                                 sdf = spark.createDataFrame(pivot_df).createOrReplaceTempView("bangumi_1")
+-- MAGIC                                 data = sql("""select 
+-- MAGIC                                 `('values', 'AGE')` as AGE,
+-- MAGIC                                 `('values', 'BIRTHPLACE')` AS BIRTHPLACE,
+-- MAGIC                                 `('values', 'BOAT')` AS BOAT,
+-- MAGIC                                 `('values', 'BOATID')` AS BOATID,
+-- MAGIC                                 `('values', 'BOATWIN2RATE')` AS BOATWIN2RATE,
+-- MAGIC                                 `('values', 'BOATWIN3RATE')` AS BOATWIN3RATE,
+-- MAGIC                                 `('values', 'CLASS')` AS CLASS,
+-- MAGIC                                 `('values', 'CLUB')` AS CLUB,
+-- MAGIC                                 `('values', 'F')` AS F,
+-- MAGIC                                 `('values', 'L')` AS L,
+-- MAGIC                                 `('values', 'LOCALWIN1RATE')` AS LOCALWIN1RATE,
+-- MAGIC                                 `('values', 'LOCALWIN2RATE')` AS LOCALWIN2RATE,
+-- MAGIC                                 `('values', 'LOCALWIN3RATE')` AS LOCALWIN3RATE,
+-- MAGIC                                 `('values', 'MOTORID')` AS MOTORID,
+-- MAGIC                                 `('values', 'MOTORWIN2RATE')` AS MOTORWIN2RATE,
+-- MAGIC                                 `('values', 'MOTORWIN3RATE')` AS MOTORWIN3RATE,
+-- MAGIC                                 `('values', 'NAME')` AS NAME,
+-- MAGIC                                 `('values', 'PLACE')` AS PLACE,
+-- MAGIC                                 `('values', 'PLAYERID')` AS PLAYERID,
+-- MAGIC                                 `('values', 'RACE')` AS RACE,
+-- MAGIC                                 `('values', 'RACEDATE')` AS RACEDATE,
+-- MAGIC                                 `('values', 'ST')` AS ST,
+-- MAGIC                                 `('values', 'WEIGHT')` AS WEIGHT,
+-- MAGIC                                 `('values', 'WIN1RATE')` AS WIN1RATE,
+-- MAGIC                                 `('values', 'WIN2RATE')` AS WIN2RATE,
+-- MAGIC                                 `('values', 'WIN3RATE')` AS WIN3RATE
+-- MAGIC                                 from bangumi_1
+-- MAGIC                                 """).toPandas()
+-- MAGIC                                 
+-- MAGIC                                 #(5) 共通データフレームに追加
+-- MAGIC                                 bangumi_df = pd.concat([bangumi_df,data],ignore_index=True)
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("4号艇取得終了！")
+-- MAGIC
+-- MAGIC                         # 5号艇
+-- MAGIC                         if rec1.find('１,') >= 0: 
+-- MAGIC                                 data1[0] = rec1[rec1.find('１,'):]
+-- MAGIC                                 # 正規表現
+-- MAGIC                                 matchObj = re.search('５,[0-9].*６,', data1[0])
+-- MAGIC                                 # 変数に入れ直す
+-- MAGIC                                 data1[0] = matchObj.group().translate(trans_table)
+-- MAGIC                                 # 必要な要素数だけループ処理 
+-- MAGIC                                 work_col = data1[0].split(",")
+-- MAGIC                                 # 開催日、場所、ラウンドを入れておく
+-- MAGIC                                 data2[0] = kaisaibi + ","  + place + "," + race + ","
+-- MAGIC                                 # カラムをセット
+-- MAGIC                                 j=0
+-- MAGIC                                 for j in range(0,23):
+-- MAGIC                                         # 登録番号はカテゴリ型として扱う
+-- MAGIC                                         if j==1: work_col[j] = 'p' + work_col[j]
+-- MAGIC                                 # レコード生成
+-- MAGIC                                 record=pd.Series(
+-- MAGIC                                   [
+-- MAGIC                                    kaisaibi,
+-- MAGIC                                    place,
+-- MAGIC                                    race,
+-- MAGIC                                    work_col[0],
+-- MAGIC                                    work_col[1],
+-- MAGIC                                    work_col[2],
+-- MAGIC                                    work_col[3],
+-- MAGIC                                    work_col[4],
+-- MAGIC                                    work_col[5],
+-- MAGIC                                    work_col[6],
+-- MAGIC                                    work_col[7],
+-- MAGIC                                    work_col[8],
+-- MAGIC                                    work_col[9],
+-- MAGIC                                    work_col[10],
+-- MAGIC                                    work_col[11],
+-- MAGIC                                    work_col[12],
+-- MAGIC                                    work_col[13],
+-- MAGIC                                    work_col[14],
+-- MAGIC                                    work_col[15],
+-- MAGIC                                    work_col[16],
+-- MAGIC                                    work_col[17],
+-- MAGIC                                    work_col[18],
+-- MAGIC                                    work_col[19],
+-- MAGIC                                    work_col[20],
+-- MAGIC                                    work_col[21],
+-- MAGIC                                    work_col[22]
+-- MAGIC                                   ], 
+-- MAGIC                                    # index=df.columns)
+-- MAGIC                                   index = fields1)
+-- MAGIC                                 # データフレームに追加
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("COLDATA1=", record,"]")
+-- MAGIC                                 # (1)Seriesをデータフレームに変換する
+-- MAGIC                                 df  = record.to_frame()
+-- MAGIC                                 df.reset_index(inplace= True)
+-- MAGIC                                 df = df.rename(columns={'index': 'col_name'})
+-- MAGIC                                 df = df.rename(columns={0: 'values'})
+-- MAGIC
+-- MAGIC                                 # (2)新規に識別キーとなる列を追加
+-- MAGIC                                 df['id']=work_col[0]
+-- MAGIC                                 
+-- MAGIC                                 # (3)縦持ちデータを横持ちデータに変換する
+-- MAGIC                                 pivot_df = df.pivot_table(values=['values'], index=['id'], columns=['col_name'], aggfunc='max').reset_index(drop=True)
+-- MAGIC                                 
+-- MAGIC                                 # (4)階層インデックスを排除
+-- MAGIC                                 sdf = spark.createDataFrame(pivot_df).createOrReplaceTempView("bangumi_1")
+-- MAGIC                                 data = sql("""select 
+-- MAGIC                                 `('values', 'AGE')` as AGE,
+-- MAGIC                                 `('values', 'BIRTHPLACE')` AS BIRTHPLACE,
+-- MAGIC                                 `('values', 'BOAT')` AS BOAT,
+-- MAGIC                                 `('values', 'BOATID')` AS BOATID,
+-- MAGIC                                 `('values', 'BOATWIN2RATE')` AS BOATWIN2RATE,
+-- MAGIC                                 `('values', 'BOATWIN3RATE')` AS BOATWIN3RATE,
+-- MAGIC                                 `('values', 'CLASS')` AS CLASS,
+-- MAGIC                                 `('values', 'CLUB')` AS CLUB,
+-- MAGIC                                 `('values', 'F')` AS F,
+-- MAGIC                                 `('values', 'L')` AS L,
+-- MAGIC                                 `('values', 'LOCALWIN1RATE')` AS LOCALWIN1RATE,
+-- MAGIC                                 `('values', 'LOCALWIN2RATE')` AS LOCALWIN2RATE,
+-- MAGIC                                 `('values', 'LOCALWIN3RATE')` AS LOCALWIN3RATE,
+-- MAGIC                                 `('values', 'MOTORID')` AS MOTORID,
+-- MAGIC                                 `('values', 'MOTORWIN2RATE')` AS MOTORWIN2RATE,
+-- MAGIC                                 `('values', 'MOTORWIN3RATE')` AS MOTORWIN3RATE,
+-- MAGIC                                 `('values', 'NAME')` AS NAME,
+-- MAGIC                                 `('values', 'PLACE')` AS PLACE,
+-- MAGIC                                 `('values', 'PLAYERID')` AS PLAYERID,
+-- MAGIC                                 `('values', 'RACE')` AS RACE,
+-- MAGIC                                 `('values', 'RACEDATE')` AS RACEDATE,
+-- MAGIC                                 `('values', 'ST')` AS ST,
+-- MAGIC                                 `('values', 'WEIGHT')` AS WEIGHT,
+-- MAGIC                                 `('values', 'WIN1RATE')` AS WIN1RATE,
+-- MAGIC                                 `('values', 'WIN2RATE')` AS WIN2RATE,
+-- MAGIC                                 `('values', 'WIN3RATE')` AS WIN3RATE
+-- MAGIC                                 from bangumi_1
+-- MAGIC                                 """).toPandas()
+-- MAGIC                                 
+-- MAGIC                                 #(5) 共通データフレームに追加
+-- MAGIC                                 bangumi_df = pd.concat([bangumi_df,data],ignore_index=True)
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("5号艇取得終了！")
+-- MAGIC                                 
+-- MAGIC                         # 6号艇
+-- MAGIC                         if rec1.find('１,') >= 0: 
+-- MAGIC                                 data1[0] = rec1[rec1.find('１,'):]
+-- MAGIC                                 # 正規表現
+-- MAGIC                                 matchObj = re.search('６,[0-9].*', data1[0])
+-- MAGIC                                 # 変数に入れ直す
+-- MAGIC                                 data1[0] = matchObj.group().translate(trans_table)
+-- MAGIC                                 # 必要な要素数だけループ処理 
+-- MAGIC                                 work_col = data1[0].split(",")
+-- MAGIC                                 # 開催日、場所、ラウンドを入れておく
+-- MAGIC                                 data2[0] = kaisaibi + ","  + place + "," + race + ","
+-- MAGIC                                 # カラムをセット
+-- MAGIC                                 j=0
+-- MAGIC                                 for j in range(0,23):
+-- MAGIC                                         # 登録番号はカテゴリ型として扱う
+-- MAGIC                                         if j==1: work_col[j] = 'p' + work_col[j]
+-- MAGIC                                 # レコード生成
+-- MAGIC                                 record=pd.Series(
+-- MAGIC                                   [
+-- MAGIC                                    kaisaibi,
+-- MAGIC                                    place,
+-- MAGIC                                    race,
+-- MAGIC                                    work_col[0],
+-- MAGIC                                    work_col[1],
+-- MAGIC                                    work_col[2],
+-- MAGIC                                    work_col[3],
+-- MAGIC                                    work_col[4],
+-- MAGIC                                    work_col[5],
+-- MAGIC                                    work_col[6],
+-- MAGIC                                    work_col[7],
+-- MAGIC                                    work_col[8],
+-- MAGIC                                    work_col[9],
+-- MAGIC                                    work_col[10],
+-- MAGIC                                    work_col[11],
+-- MAGIC                                    work_col[12],
+-- MAGIC                                    work_col[13],
+-- MAGIC                                    work_col[14],
+-- MAGIC                                    work_col[15],
+-- MAGIC                                    work_col[16],
+-- MAGIC                                    work_col[17],
+-- MAGIC                                    work_col[18],
+-- MAGIC                                    work_col[19],
+-- MAGIC                                    work_col[20],
+-- MAGIC                                    work_col[21],
+-- MAGIC                                    work_col[22]
+-- MAGIC                                   ], 
+-- MAGIC                                    # index=df.columns)
+-- MAGIC                                   index = fields1)
+-- MAGIC                                 # データフレームに追加
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("COLDATA1=", record,"]")
+-- MAGIC                                 # (1)Seriesをデータフレームに変換する
+-- MAGIC                                 df  = record.to_frame()
+-- MAGIC                                 df.reset_index(inplace= True)
+-- MAGIC                                 df = df.rename(columns={'index': 'col_name'})
+-- MAGIC                                 df = df.rename(columns={0: 'values'})
+-- MAGIC
+-- MAGIC                                 # (2)新規に識別キーとなる列を追加
+-- MAGIC                                 df['id']=work_col[0]
+-- MAGIC                                 
+-- MAGIC                                 # (3)縦持ちデータを横持ちデータに変換する
+-- MAGIC                                 pivot_df = df.pivot_table(values=['values'], index=['id'], columns=['col_name'], aggfunc='max').reset_index(drop=True)
+-- MAGIC                                 
+-- MAGIC                                 # (4)階層インデックスを排除
+-- MAGIC                                 sdf = spark.createDataFrame(pivot_df).createOrReplaceTempView("bangumi_1")
+-- MAGIC                                 data = sql("""select 
+-- MAGIC                                 `('values', 'AGE')` as AGE,
+-- MAGIC                                 `('values', 'BIRTHPLACE')` AS BIRTHPLACE,
+-- MAGIC                                 `('values', 'BOAT')` AS BOAT,
+-- MAGIC                                 `('values', 'BOATID')` AS BOATID,
+-- MAGIC                                 `('values', 'BOATWIN2RATE')` AS BOATWIN2RATE,
+-- MAGIC                                 `('values', 'BOATWIN3RATE')` AS BOATWIN3RATE,
+-- MAGIC                                 `('values', 'CLASS')` AS CLASS,
+-- MAGIC                                 `('values', 'CLUB')` AS CLUB,
+-- MAGIC                                 `('values', 'F')` AS F,
+-- MAGIC                                 `('values', 'L')` AS L,
+-- MAGIC                                 `('values', 'LOCALWIN1RATE')` AS LOCALWIN1RATE,
+-- MAGIC                                 `('values', 'LOCALWIN2RATE')` AS LOCALWIN2RATE,
+-- MAGIC                                 `('values', 'LOCALWIN3RATE')` AS LOCALWIN3RATE,
+-- MAGIC                                 `('values', 'MOTORID')` AS MOTORID,
+-- MAGIC                                 `('values', 'MOTORWIN2RATE')` AS MOTORWIN2RATE,
+-- MAGIC                                 `('values', 'MOTORWIN3RATE')` AS MOTORWIN3RATE,
+-- MAGIC                                 `('values', 'NAME')` AS NAME,
+-- MAGIC                                 `('values', 'PLACE')` AS PLACE,
+-- MAGIC                                 `('values', 'PLAYERID')` AS PLAYERID,
+-- MAGIC                                 `('values', 'RACE')` AS RACE,
+-- MAGIC                                 `('values', 'RACEDATE')` AS RACEDATE,
+-- MAGIC                                 `('values', 'ST')` AS ST,
+-- MAGIC                                 `('values', 'WEIGHT')` AS WEIGHT,
+-- MAGIC                                 `('values', 'WIN1RATE')` AS WIN1RATE,
+-- MAGIC                                 `('values', 'WIN2RATE')` AS WIN2RATE,
+-- MAGIC                                 `('values', 'WIN3RATE')` AS WIN3RATE
+-- MAGIC                                 from bangumi_1
+-- MAGIC                                 """).toPandas()
+-- MAGIC                                 
+-- MAGIC                                 #(5) 共通データフレームに追加
+-- MAGIC                                 bangumi_df = pd.concat([bangumi_df,data],ignore_index=True)
+-- MAGIC                                 if dbutils.widgets.get("DEBUG") == "YES": print("6号艇取得終了！")
+-- MAGIC                                 
+-- MAGIC   if dbutils.widgets.get("DEBUG") == "YES": print("全レース取得終了！")
+-- MAGIC   # Sparkデータフレームに変換
+-- MAGIC   if dbutils.widgets.get("DEBUG") == "YES": display(bangumi_df)
+-- MAGIC   sdf = spark.createDataFrame(bangumi_df)
+-- MAGIC   if dbutils.widgets.get("DEBUG") == "YES": print("Sparkデータフレームに変換終了！")
+-- MAGIC
+-- MAGIC   # テンポラリ表作成
+-- MAGIC   sdf.createOrReplaceTempView("BANGUMI_TMP")
+-- MAGIC
+-- MAGIC   # SQLで横持ちに変換
+-- MAGIC   # 以下は除く
+-- MAGIC   # NAME
+-- MAGIC   # BIRTHPLACE
+-- MAGIC   # MOTORID
+-- MAGIC   # BOOATID
+-- MAGIC   
+-- MAGIC   BANGUMI = (
+-- MAGIC   sqlContext.sql("""
+-- MAGIC                select 
+-- MAGIC                RACEDATE,
+-- MAGIC                PLACE,
+-- MAGIC                RACE,
+-- MAGIC                
+-- MAGIC                max(PLAYERID1) as PLAYERID1,
+-- MAGIC                max(PLAYERID2) as PLAYERID2,
+-- MAGIC                max(PLAYERID3) as PLAYERID3,
+-- MAGIC                max(PLAYERID4) as PLAYERID4,
+-- MAGIC                max(PLAYERID5) as PLAYERID5,
+-- MAGIC                max(PLAYERID6) as PLAYERID6,
+-- MAGIC                
+-- MAGIC                max(CLASS1) as CLASS1,
+-- MAGIC                max(CLASS2) as CLASS2,
+-- MAGIC                max(CLASS3) as CLASS3,
+-- MAGIC                max(CLASS4) as CLASS4,
+-- MAGIC                max(CLASS5) as CLASS5,
+-- MAGIC                max(CLASS6) as CLASS6,
+-- MAGIC                
+-- MAGIC                max(CLUB1) as CLUB1,
+-- MAGIC                max(CLUB2) as CLUB2,
+-- MAGIC                max(CLUB3) as CLUB3,
+-- MAGIC                max(CLUB4) as CLUB4,
+-- MAGIC                max(CLUB5) as CLUB5,
+-- MAGIC                max(CLUB6) as CLUB6,
+-- MAGIC                
+-- MAGIC                max(AGE1) as AGE1,
+-- MAGIC                max(AGE2) as AGE2,
+-- MAGIC                max(AGE3) as AGE3,
+-- MAGIC                max(AGE4) as AGE4,
+-- MAGIC                max(AGE5) as AGE5,
+-- MAGIC                max(AGE6) as AGE6,
+-- MAGIC
+-- MAGIC                max(WEIGHT1) as WEIGHT1,
+-- MAGIC                max(WEIGHT2) as WEIGHT2,
+-- MAGIC                max(WEIGHT3) as WEIGHT3,
+-- MAGIC                max(WEIGHT4) as WEIGHT4,
+-- MAGIC                max(WEIGHT5) as WEIGHT5,
+-- MAGIC                max(WEIGHT6) as WEIGHT6,
+-- MAGIC                
+-- MAGIC                max(F1) as F1,
+-- MAGIC                max(F2) as F2,
+-- MAGIC                max(F3) as F3,
+-- MAGIC                max(F4) as F4,
+-- MAGIC                max(F5) as F5,
+-- MAGIC                max(F6) as F6,
+-- MAGIC                
+-- MAGIC                max(L1) as L1,
+-- MAGIC                max(L2) as L2,
+-- MAGIC                max(L3) as L3,
+-- MAGIC                max(L4) as L4,
+-- MAGIC                max(L5) as L5,
+-- MAGIC                max(L6) as L6,
+-- MAGIC
+-- MAGIC                max(WIN1RATE1) as WIN1RATE1,
+-- MAGIC                max(WIN1RATE2) as WIN1RATE2,
+-- MAGIC                max(WIN1RATE3) as WIN1RATE3,
+-- MAGIC                max(WIN1RATE4) as WIN1RATE4,
+-- MAGIC                max(WIN1RATE5) as WIN1RATE5,
+-- MAGIC                max(WIN1RATE6) as WIN1RATE6,
+-- MAGIC                
+-- MAGIC                max(WIN2RATE1) as WIN2RATE1,
+-- MAGIC                max(WIN2RATE2) as WIN2RATE2,
+-- MAGIC                max(WIN2RATE3) as WIN2RATE3,
+-- MAGIC                max(WIN2RATE4) as WIN2RATE4,
+-- MAGIC                max(WIN2RATE5) as WIN2RATE5,
+-- MAGIC                max(WIN2RATE6) as WIN2RATE6,
+-- MAGIC
+-- MAGIC                max(WIN3RATE1) as WIN3RATE1,
+-- MAGIC                max(WIN3RATE2) as WIN3RATE2,
+-- MAGIC                max(WIN3RATE3) as WIN3RATE3,
+-- MAGIC                max(WIN3RATE4) as WIN3RATE4,
+-- MAGIC                max(WIN3RATE5) as WIN3RATE5,
+-- MAGIC                max(WIN3RATE6) as WIN3RATE6,
+-- MAGIC
+-- MAGIC                max(LOCALWIN1RATE1) as LOCALWIN1RATE1,
+-- MAGIC                max(LOCALWIN1RATE2) as LOCALWIN1RATE2,
+-- MAGIC                max(LOCALWIN1RATE3) as LOCALWIN1RATE3,
+-- MAGIC                max(LOCALWIN1RATE4) as LOCALWIN1RATE4,
+-- MAGIC                max(LOCALWIN1RATE5) as LOCALWIN1RATE5,
+-- MAGIC                max(LOCALWIN1RATE6) as LOCALWIN1RATE6,
+-- MAGIC                
+-- MAGIC                max(LOCALWIN2RATE1) as LOCALWIN2RATE1,
+-- MAGIC                max(LOCALWIN2RATE2) as LOCALWIN2RATE2,
+-- MAGIC                max(LOCALWIN2RATE3) as LOCALWIN2RATE3,
+-- MAGIC                max(LOCALWIN2RATE4) as LOCALWIN2RATE4,
+-- MAGIC                max(LOCALWIN2RATE5) as LOCALWIN2RATE5,
+-- MAGIC                max(LOCALWIN2RATE6) as LOCALWIN2RATE6,
+-- MAGIC                
+-- MAGIC                max(LOCALWIN3RATE1) as LOCALWIN3RATE1,
+-- MAGIC                max(LOCALWIN3RATE2) as LOCALWIN3RATE2,
+-- MAGIC                max(LOCALWIN3RATE3) as LOCALWIN3RATE3,
+-- MAGIC                max(LOCALWIN3RATE4) as LOCALWIN3RATE4,
+-- MAGIC                max(LOCALWIN3RATE5) as LOCALWIN3RATE5,
+-- MAGIC                max(LOCALWIN3RATE6) as LOCALWIN3RATE6,
+-- MAGIC
+-- MAGIC                max(MOTORWIN2RATE1) as MOTORWIN2RATE1,
+-- MAGIC                max(MOTORWIN2RATE2) as MOTORWIN2RATE2,
+-- MAGIC                max(MOTORWIN2RATE3) as MOTORWIN2RATE3,
+-- MAGIC                max(MOTORWIN2RATE4) as MOTORWIN2RATE4,
+-- MAGIC                max(MOTORWIN2RATE5) as MOTORWIN2RATE5,
+-- MAGIC                max(MOTORWIN2RATE6) as MOTORWIN2RATE6,
+-- MAGIC                
+-- MAGIC                max(MOTORWIN3RATE1) as MOTORWIN3RATE1,
+-- MAGIC                max(MOTORWIN3RATE2) as MOTORWIN3RATE2,
+-- MAGIC                max(MOTORWIN3RATE3) as MOTORWIN3RATE3,
+-- MAGIC                max(MOTORWIN3RATE4) as MOTORWIN3RATE4,
+-- MAGIC                max(MOTORWIN3RATE5) as MOTORWIN3RATE5,
+-- MAGIC                max(MOTORWIN3RATE6) as MOTORWIN3RATE6,
+-- MAGIC
+-- MAGIC                max(BOATWIN2RATE1) as BOATWIN2RATE1,
+-- MAGIC                max(BOATWIN2RATE2) as BOATWIN2RATE2,
+-- MAGIC                max(BOATWIN2RATE3) as BOATWIN2RATE3,
+-- MAGIC                max(BOATWIN2RATE4) as BOATWIN2RATE4,
+-- MAGIC                max(BOATWIN2RATE5) as BOATWIN2RATE5,
+-- MAGIC                max(BOATWIN2RATE6) as BOATWIN2RATE6,
+-- MAGIC
+-- MAGIC                max(BOATWIN3RATE1) as BOATWIN3RATE1,
+-- MAGIC                max(BOATWIN3RATE2) as BOATWIN3RATE2,
+-- MAGIC                max(BOATWIN3RATE3) as BOATWIN3RATE3,
+-- MAGIC                max(BOATWIN3RATE4) as BOATWIN3RATE4,
+-- MAGIC                max(BOATWIN3RATE5) as BOATWIN3RATE5,
+-- MAGIC                max(BOATWIN3RATE6) as BOATWIN3RATE6,
+-- MAGIC                
+-- MAGIC                MAX(ST_AVG1) as ST_AVG1,
+-- MAGIC                MAX(ST_AVG2) as ST_AVG2,
+-- MAGIC                MAX(ST_AVG3) as ST_AVG3,
+-- MAGIC                MAX(ST_AVG4) as ST_AVG4,
+-- MAGIC                MAX(ST_AVG5) as ST_AVG5,
+-- MAGIC                MAX(ST_AVG6) as ST_AVG6
+-- MAGIC                
+-- MAGIC                from
+-- MAGIC                (
+-- MAGIC                select 
+-- MAGIC                RACEDATE,
+-- MAGIC                PLACE,
+-- MAGIC                RACE,
+-- MAGIC                
+-- MAGIC                CASE WHEN BOAT=1 THEN PLAYERID END as PLAYERID1,
+-- MAGIC                CASE WHEN BOAT=2 THEN PLAYERID END as PLAYERID2,
+-- MAGIC                CASE WHEN BOAT=3 THEN PLAYERID END as PLAYERID3,
+-- MAGIC                CASE WHEN BOAT=4 THEN PLAYERID END as PLAYERID4,
+-- MAGIC                CASE WHEN BOAT=5 THEN PLAYERID END as PLAYERID5,
+-- MAGIC                CASE WHEN BOAT=6 THEN PLAYERID END as PLAYERID6,
+-- MAGIC                
+-- MAGIC                CASE WHEN BOAT=1 THEN CLASS END as CLASS1,
+-- MAGIC                CASE WHEN BOAT=2 THEN CLASS END as CLASS2,
+-- MAGIC                CASE WHEN BOAT=3 THEN CLASS END as CLASS3,
+-- MAGIC                CASE WHEN BOAT=4 THEN CLASS END as CLASS4,
+-- MAGIC                CASE WHEN BOAT=5 THEN CLASS END as CLASS5,
+-- MAGIC                CASE WHEN BOAT=6 THEN CLASS END as CLASS6, 
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN CLUB END as CLUB1,
+-- MAGIC                CASE WHEN BOAT=2 THEN CLUB END as CLUB2,
+-- MAGIC                CASE WHEN BOAT=3 THEN CLUB END as CLUB3,
+-- MAGIC                CASE WHEN BOAT=4 THEN CLUB END as CLUB4,
+-- MAGIC                CASE WHEN BOAT=5 THEN CLUB END as CLUB5,
+-- MAGIC                CASE WHEN BOAT=6 THEN CLUB END as CLUB6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN AGE END as AGE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN AGE END as AGE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN AGE END as AGE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN AGE END as AGE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN AGE END as AGE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN AGE END as AGE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN WEIGHT END as WEIGHT1,
+-- MAGIC                CASE WHEN BOAT=2 THEN WEIGHT END as WEIGHT2,
+-- MAGIC                CASE WHEN BOAT=3 THEN WEIGHT END as WEIGHT3,
+-- MAGIC                CASE WHEN BOAT=4 THEN WEIGHT END as WEIGHT4,
+-- MAGIC                CASE WHEN BOAT=5 THEN WEIGHT END as WEIGHT5,
+-- MAGIC                CASE WHEN BOAT=6 THEN WEIGHT END as WEIGHT6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN F END as F1,
+-- MAGIC                CASE WHEN BOAT=2 THEN F END as F2,
+-- MAGIC                CASE WHEN BOAT=3 THEN F END as F3,
+-- MAGIC                CASE WHEN BOAT=4 THEN F END as F4,
+-- MAGIC                CASE WHEN BOAT=5 THEN F END as F5,
+-- MAGIC                CASE WHEN BOAT=6 THEN F END as F6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN L END as L1,
+-- MAGIC                CASE WHEN BOAT=2 THEN L END as L2,
+-- MAGIC                CASE WHEN BOAT=3 THEN L END as L3,
+-- MAGIC                CASE WHEN BOAT=4 THEN L END as L4,
+-- MAGIC                CASE WHEN BOAT=5 THEN L END as L5,
+-- MAGIC                CASE WHEN BOAT=6 THEN L END as L6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN WIN1RATE END as WIN1RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN WIN1RATE END as WIN1RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN WIN1RATE END as WIN1RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN WIN1RATE END as WIN1RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN WIN1RATE END as WIN1RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN WIN1RATE END as WIN1RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN WIN2RATE END as WIN2RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN WIN2RATE END as WIN2RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN WIN2RATE END as WIN2RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN WIN2RATE END as WIN2RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN WIN2RATE END as WIN2RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN WIN2RATE END as WIN2RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN WIN3RATE END as WIN3RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN WIN3RATE END as WIN3RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN WIN3RATE END as WIN3RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN WIN3RATE END as WIN3RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN WIN3RATE END as WIN3RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN WIN3RATE END as WIN3RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN LOCALWIN1RATE END as LOCALWIN1RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN LOCALWIN1RATE END as LOCALWIN1RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN LOCALWIN1RATE END as LOCALWIN1RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN LOCALWIN1RATE END as LOCALWIN1RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN LOCALWIN1RATE END as LOCALWIN1RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN LOCALWIN1RATE END as LOCALWIN1RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN LOCALWIN2RATE END as LOCALWIN2RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN LOCALWIN2RATE END as LOCALWIN2RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN LOCALWIN2RATE END as LOCALWIN2RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN LOCALWIN2RATE END as LOCALWIN2RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN LOCALWIN2RATE END as LOCALWIN2RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN LOCALWIN2RATE END as LOCALWIN2RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN LOCALWIN3RATE END as LOCALWIN3RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN LOCALWIN3RATE END as LOCALWIN3RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN LOCALWIN3RATE END as LOCALWIN3RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN LOCALWIN3RATE END as LOCALWIN3RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN LOCALWIN3RATE END as LOCALWIN3RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN LOCALWIN3RATE END as LOCALWIN3RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN MOTORWIN2RATE END as MOTORWIN2RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN MOTORWIN2RATE END as MOTORWIN2RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN MOTORWIN2RATE END as MOTORWIN2RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN MOTORWIN2RATE END as MOTORWIN2RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN MOTORWIN2RATE END as MOTORWIN2RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN MOTORWIN2RATE END as MOTORWIN2RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN MOTORWIN3RATE END as MOTORWIN3RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN MOTORWIN3RATE END as MOTORWIN3RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN MOTORWIN3RATE END as MOTORWIN3RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN MOTORWIN3RATE END as MOTORWIN3RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN MOTORWIN3RATE END as MOTORWIN3RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN MOTORWIN3RATE END as MOTORWIN3RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN BOATWIN2RATE END as BOATWIN2RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN BOATWIN2RATE END as BOATWIN2RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN BOATWIN2RATE END as BOATWIN2RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN BOATWIN2RATE END as BOATWIN2RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN BOATWIN2RATE END as BOATWIN2RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN BOATWIN2RATE END as BOATWIN2RATE6,
+-- MAGIC
+-- MAGIC                CASE WHEN BOAT=1 THEN BOATWIN3RATE END as BOATWIN3RATE1,
+-- MAGIC                CASE WHEN BOAT=2 THEN BOATWIN3RATE END as BOATWIN3RATE2,
+-- MAGIC                CASE WHEN BOAT=3 THEN BOATWIN3RATE END as BOATWIN3RATE3,
+-- MAGIC                CASE WHEN BOAT=4 THEN BOATWIN3RATE END as BOATWIN3RATE4,
+-- MAGIC                CASE WHEN BOAT=5 THEN BOATWIN3RATE END as BOATWIN3RATE5,
+-- MAGIC                CASE WHEN BOAT=6 THEN BOATWIN3RATE END as BOATWIN3RATE6,
+-- MAGIC                
+-- MAGIC                CASE WHEN BOAT=1 THEN ST END as ST_AVG1,
+-- MAGIC                CASE WHEN BOAT=2 THEN ST END as ST_AVG2,
+-- MAGIC                CASE WHEN BOAT=3 THEN ST END as ST_AVG3,
+-- MAGIC                CASE WHEN BOAT=4 THEN ST END as ST_AVG4,
+-- MAGIC                CASE WHEN BOAT=5 THEN ST END as ST_AVG5,
+-- MAGIC                CASE WHEN BOAT=6 THEN ST END as ST_AVG6
+-- MAGIC                 
+-- MAGIC                from BANGUMI_TMP
+-- MAGIC                ) as T1
+-- MAGIC                group by
+-- MAGIC                RACEDATE,
+-- MAGIC                PLACE,
+-- MAGIC                RACE
+-- MAGIC                """
+-- MAGIC               )
+-- MAGIC   )
+-- MAGIC   
+-- MAGIC   # 結果をテンポラリビュー化
+-- MAGIC   BANGUMI.createOrReplaceTempView("BANGUMI_T")
+-- MAGIC   # 結果を記録
+-- MAGIC   BANGUMI.write.mode("append").saveAsTable("BANGUMI")
+
+-- COMMAND ----------
+
+-- MAGIC %md ## 関数2 レース結果取得
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC from pyspark.sql.functions import col
+-- MAGIC
+-- MAGIC def result(url2): 
+-- MAGIC     
+-- MAGIC   # BeattifulSoupで認識したレコード数
+-- MAGIC   rid = 0
+-- MAGIC
+-- MAGIC   # レスポンス取得 
+-- MAGIC   response = requests.get(url2)
+-- MAGIC   response.encoding = response.apparent_encoding
+-- MAGIC
+-- MAGIC   # win type
+-- MAGIC   win = ''
+-- MAGIC   wide = ''
+-- MAGIC   fuku = ''
+-- MAGIC
+-- MAGIC   # HTMLテキスト取得
+-- MAGIC   bs = BeautifulSoup(response.text, 'html.parser')
+-- MAGIC
+-- MAGIC   # チェック
+-- MAGIC   if bs.getText().find("表示条件を変更してもう一度処理を行ってください。") > 0:
+-- MAGIC     if dbutils.widgets.get("DEBUG") == "YES": print("データなし")
+-- MAGIC     return("データなし")
+-- MAGIC   
+-- MAGIC   #if dbutils.widgets.get("DEBUG") == "YES": print("レース結果のテキスト:" + bs.getText())
+-- MAGIC
+-- MAGIC   #アウトプット
+-- MAGIC   tmp ='{' + '"RACEDATE":{' + '"0":"' + kaisaibi + '"},' + '"PLACE":{' + '"0":"' + place + '"},' + '"RACE":{' + '"0":"' + race + '"},'
+-- MAGIC
+-- MAGIC
+-- MAGIC   # テキストの解析
+-- MAGIC   for i in bs.select("td"):
+-- MAGIC
+-- MAGIC                 # スクレイピングした3レコード目以降を表示
+-- MAGIC                 rid=rid+1
+-- MAGIC                 #print("[RID]=" + str(rid))
+-- MAGIC                 # スクレイピングした3レコード目を表示
+-- MAGIC                 #if rid==3: 
+-- MAGIC
+-- MAGIC                 # \r\n が改行なのでまず\rを除外して通常の\nにする
+-- MAGIC                 text01 = i.getText().replace("\r" , "")
+-- MAGIC                 # ブランクを除外
+-- MAGIC                 text02 = text01.replace(" " , "")
+-- MAGIC                 # ２バイトブランクを除外
+-- MAGIC                 text03 = text02.replace("　" , "")
+-- MAGIC                 # \nをを,にする
+-- MAGIC                 text04 = text03.replace("\n" , ",")
+-- MAGIC                 # ブランク+,を,にする
+-- MAGIC                 text05 = text04.replace(" ," , ",")
+-- MAGIC
+-- MAGIC                 # 2連単や3連単の結果を時刻とみなしてしまうので
+-- MAGIC                 # -を>にする
+-- MAGIC                 text05x = text05.replace("-" , ">")
+-- MAGIC                 text05  = text05x
+-- MAGIC
+-- MAGIC                 # 正規表現で1艇目を取得 
+-- MAGIC                 # ここでは番号は２バイトではない
+-- MAGIC                 text06 = re.sub(r',,,,,1' , r'\n1',text05)
+-- MAGIC
+-- MAGIC                 # 正規表現で2艇目を取得 
+-- MAGIC                 text07 = re.sub(r',,,,,2' , r'\n2',text06)
+-- MAGIC
+-- MAGIC                 # 正規表現で3艇目を取得
+-- MAGIC                 text08 = re.sub(r',,,,,3' , r'\n3',text07)
+-- MAGIC
+-- MAGIC                 # 正規表現で4艇目を取得 
+-- MAGIC                 text09 = re.sub(r',,,,,4' , r'\n4',text08)
+-- MAGIC
+-- MAGIC                 # 正規表現で5艇目を取得
+-- MAGIC                 text10 = re.sub(r',,,,,5' , r'\n5',text09)
+-- MAGIC
+-- MAGIC                 # 正規表現で6艇目を取得 
+-- MAGIC                 text11 = re.sub(r',,,,,6' , r'\n6',text10)
+-- MAGIC
+-- MAGIC                 # 先頭カンマを削除
+-- MAGIC                 text12 = re.sub(r',' , r'',text11,1)
+-- MAGIC
+-- MAGIC                 # ２バイト数字を削除
+-- MAGIC                 text13 = re.sub(r'１' , r'1',text12,1)
+-- MAGIC                 text14 = re.sub(r'２' , r'2',text13,1)
+-- MAGIC                 text15 = re.sub(r'３' , r'3',text14,1)
+-- MAGIC                 text16 = re.sub(r'４' , r'4',text15,1)
+-- MAGIC                 text17 = re.sub(r'５' , r'5',text16,1)
+-- MAGIC                 text18 = re.sub(r'６' , r'6',text17,1)
+-- MAGIC                 
+-- MAGIC                 # ¥マークを削除
+-- MAGIC                 #text19 = re.sub(r'\¥' , r'',text18,1)
+-- MAGIC
+-- MAGIC                 # 中間データを変数にセット 
+-- MAGIC                 text = text18
+-- MAGIC
+-- MAGIC                 # 事前編集後
+-- MAGIC                 work = []
+-- MAGIC                 work = text.splitlines() 
+-- MAGIC
+-- MAGIC                 data1 = []
+-- MAGIC                 data1 = text.splitlines() 
+-- MAGIC
+-- MAGIC                 data2 = []
+-- MAGIC                 data2 = text.splitlines() 
+-- MAGIC
+-- MAGIC
+-- MAGIC                 # 要素数だけループ処理 
+-- MAGIC                 for i in range(0,len(work)):
+-- MAGIC                         # 最初に出てくる,,を,に変換してwork2に代入
+-- MAGIC                         work1 = re.sub(r',,' , r',',work[i])
+-- MAGIC                         # 最初に出てくる,,,を,に変換してwork2に代入
+-- MAGIC                         work2 = re.sub(r',,,' , r',',work1)
+-- MAGIC                         # ２回目に出てくる,をブランクに変換してwork2に代入
+-- MAGIC                         work3 = re.sub(r',' , r'',work2)
+-- MAGIC
+-- MAGIC  
+-- MAGIC                         kekka = work3
+-- MAGIC
+-- MAGIC                         
+-- MAGIC                         # 単勝
+-- MAGIC                         if kekka.find('単勝') >= 0: 
+-- MAGIC                                 win='tan'
+-- MAGIC                         if win=='tan' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"単勝K":' + '"' + kekka + '",')
+-- MAGIC                                 tmp = tmp + '"TANK":' + '"' + kekka + '",'
+-- MAGIC                         if win=='tan' and ( kekka.find('1') == 0 
+-- MAGIC                                                or kekka.find('2') == 0
+-- MAGIC                                                or kekka.find('3') == 0
+-- MAGIC                                                or kekka.find('4') == 0
+-- MAGIC                                                or kekka.find('5') == 0
+-- MAGIC                                                or kekka.find('6') == 0
+-- MAGIC                                                or kekka.find('特払') == 0 
+-- MAGIC                                                or kekka.find('不成立') == 0 ) :
+-- MAGIC                                 #print('"単勝":' + '"' + kekka + '",')
+-- MAGIC                                 tmp = tmp + '"TAN":' + '"' + kekka + '",'
+-- MAGIC
+-- MAGIC                         # 複勝
+-- MAGIC                         if kekka.find('複勝') >= 0 and fuku == '': 
+-- MAGIC                                 win='fuku'
+-- MAGIC                                 fuku='1'
+-- MAGIC                         elif kekka.find('複勝') >= 0 and fuku == '1': 
+-- MAGIC                                 win='fuku'
+-- MAGIC                                 fuku='2'
+-- MAGIC
+-- MAGIC                         if win=='fuku' and fuku=='1' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"複勝1K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"FUKU1K":' + '"' + kekka + '",'
+-- MAGIC                                 fuku='2'
+-- MAGIC                         elif win=='fuku' and fuku=='2' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"複勝2K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"FUKU2K":' + '"' + kekka + '",' 
+-- MAGIC                                 fuku=''
+-- MAGIC
+-- MAGIC                         if win=='fuku' and fuku=='1'  and ( kekka.find('1') == 0 
+-- MAGIC                                                or kekka.find('2') == 0
+-- MAGIC                                                or kekka.find('3') == 0
+-- MAGIC                                                or kekka.find('4') == 0
+-- MAGIC                                                or kekka.find('5') == 0
+-- MAGIC                                                or kekka.find('6') == 0):
+-- MAGIC                                 #print('"複勝1":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"FUKU1":' + '"' + kekka + '",' 
+-- MAGIC
+-- MAGIC                         elif win=='fuku' and fuku=='2'  and ( kekka.find('1') == 0 
+-- MAGIC                                                or kekka.find('2') == 0
+-- MAGIC                                                or kekka.find('3') == 0
+-- MAGIC                                                or kekka.find('4') == 0
+-- MAGIC                                                or kekka.find('5') == 0
+-- MAGIC                                                or kekka.find('6') == 0):
+-- MAGIC                                 #print('"複勝2":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"FUKU2":' + '"' + kekka + '",'
+-- MAGIC
+-- MAGIC
+-- MAGIC                         # ワイド   
+-- MAGIC                         if   kekka.find('拡連複') >= 0 and wide == '': 
+-- MAGIC                                 win='wide'
+-- MAGIC                                 wide='1'
+-- MAGIC                         elif kekka.find('拡連複') >= 0 and wide == '1': 
+-- MAGIC                                 win='wide'
+-- MAGIC                                 wide='2'
+-- MAGIC                         elif kekka.find('拡連複') >= 0 and wide == '2': 
+-- MAGIC                                 win='wide'
+-- MAGIC                                 wide='3'
+-- MAGIC
+-- MAGIC                         if   win=='wide' and wide=='1' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"拡連複1K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"WIDE1K":' + '"' + kekka + '",'
+-- MAGIC                                 wide='2'
+-- MAGIC                         elif win=='wide' and wide=='2' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"拡連複2K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"WIDE2K":' + '"' + kekka + '",'
+-- MAGIC                                 wide='3'
+-- MAGIC                         elif win=='wide' and wide=='3' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"拡連複3K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"WIDE3K":' + '"' + kekka + '",'
+-- MAGIC                                 wide=''
+-- MAGIC                                
+-- MAGIC                         if   win=='wide' and wide=='1' and ( kekka.find('1=') == 0 
+-- MAGIC                                                or kekka.find('2=') == 0
+-- MAGIC                                                or kekka.find('3=') == 0
+-- MAGIC                                                or kekka.find('4=') == 0
+-- MAGIC                                                or kekka.find('5=') == 0
+-- MAGIC                                                or kekka.find('6=') == 0):
+-- MAGIC                                 #print('"拡連複1":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"WIDE1":' + '"' + kekka + '",'
+-- MAGIC
+-- MAGIC                         elif win=='wide' and wide=='2' and ( kekka.find('1=') == 0 
+-- MAGIC                                                or kekka.find('2=') == 0
+-- MAGIC                                                or kekka.find('3=') == 0
+-- MAGIC                                                or kekka.find('4=') == 0
+-- MAGIC                                                or kekka.find('5=') == 0
+-- MAGIC                                                or kekka.find('6=') == 0):
+-- MAGIC                                 #print('"拡連複2":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"WIDE2":' + '"' + kekka + '",'
+-- MAGIC
+-- MAGIC                         elif win=='wide' and wide=='3' and ( kekka.find('1=') == 0 
+-- MAGIC                                                or kekka.find('2=') == 0
+-- MAGIC                                                or kekka.find('3=') == 0
+-- MAGIC                                                or kekka.find('4=') == 0
+-- MAGIC                                                or kekka.find('5=') == 0
+-- MAGIC                                                or kekka.find('6=') == 0):
+-- MAGIC                                 #print('"拡連複3":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"WIDE3":' + '"' + kekka + '",' 
+-- MAGIC
+-- MAGIC
+-- MAGIC                         # 2連単
+-- MAGIC                         if kekka.find('2連単') >= 0: 
+-- MAGIC                                 win='rentan2'
+-- MAGIC                         if win=='rentan2' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"2連単K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"RENTAN2K":' + '"' + kekka + '",'
+-- MAGIC                         if win=='rentan2' and (   kekka.find('1>') == 0 
+-- MAGIC                                                or kekka.find('2>') == 0
+-- MAGIC                                                or kekka.find('3>') == 0
+-- MAGIC                                                or kekka.find('4>') == 0
+-- MAGIC                                                or kekka.find('5>') == 0
+-- MAGIC                                                or kekka.find('6>') == 0
+-- MAGIC                                                or kekka.find('特払') == 0
+-- MAGIC                                                or kekka.find('不成立') == 0):
+-- MAGIC                                 #print('"2連単":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"RENTAN2":' + '"' + kekka + '",'
+-- MAGIC
+-- MAGIC                         # 2連複
+-- MAGIC                         if kekka.find('2連複') >= 0: 
+-- MAGIC                                 win='renfuku2'
+-- MAGIC                         if win=='renfuku2' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"2連複K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"RENFUKU2K":' + '"' + kekka + '",'
+-- MAGIC                         if win=='renfuku2' and ( kekka.find('1=') == 0 
+-- MAGIC                                                or kekka.find('2=') == 0
+-- MAGIC                                                or kekka.find('3=') == 0
+-- MAGIC                                                or kekka.find('4=') == 0
+-- MAGIC                                                or kekka.find('5=') == 0
+-- MAGIC                                                or kekka.find('6=') == 0
+-- MAGIC                                                or kekka.find('特払') == 0
+-- MAGIC                                                or kekka.find('不成立') == 0):
+-- MAGIC                                 #print('"2連複":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"RENFUKU2":' + '"' + kekka + '",'
+-- MAGIC
+-- MAGIC                         # 3連単
+-- MAGIC                         if kekka.find('3連単') >= 0: 
+-- MAGIC                                 win='rentan3'
+-- MAGIC                         if win=='rentan3' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"3連単K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"RENTAN3K":' + '"' + kekka + '",'
+-- MAGIC                         if win=='rentan3' and (   kekka.find('1>') == 0 
+-- MAGIC                                                or kekka.find('2>') == 0
+-- MAGIC                                                or kekka.find('3>') == 0
+-- MAGIC                                                or kekka.find('4>') == 0
+-- MAGIC                                                or kekka.find('5>') == 0
+-- MAGIC                                                or kekka.find('6>') == 0
+-- MAGIC                                                or kekka.find('特払') == 0
+-- MAGIC                                                or kekka.find('不成立') == 0):
+-- MAGIC                                 #print('"3連単":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"RENTAN3":' + '"' + kekka + '",'
+-- MAGIC
+-- MAGIC
+-- MAGIC                         # 3連複
+-- MAGIC                         if kekka.find('3連複') >= 0: 
+-- MAGIC                                 win='renfuku3'
+-- MAGIC                         if win=='renfuku3' and ( kekka.find('¥')) == 0:
+-- MAGIC                                 #print('"3連複K":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"RENFUKU3K":' + '"' + kekka + '",'
+-- MAGIC                         if win=='renfuku3' and ( kekka.find('1=') == 0 
+-- MAGIC                                                or kekka.find('2=') == 0
+-- MAGIC                                                or kekka.find('3=') == 0
+-- MAGIC                                                or kekka.find('4=') == 0
+-- MAGIC                                                or kekka.find('5=') == 0
+-- MAGIC                                                or kekka.find('6=') == 0
+-- MAGIC                                                or kekka.find('特払') == 0
+-- MAGIC                                                or kekka.find('不成立') == 0):
+-- MAGIC                                 #print('"3連複":' + '"' + kekka + '",' )
+-- MAGIC                                 tmp = tmp + '"RENFUKU3":' + '"' + kekka + '",' 
+-- MAGIC
+-- MAGIC   tmp = tmp + '"EOL":"EOL" }'
+-- MAGIC   # ¥を除外
+-- MAGIC   tmp = tmp.replace("¥" , "")
+-- MAGIC   if dbutils.widgets.get("DEBUG") == "YES": print(tmp);
+-- MAGIC
+-- MAGIC   # 書き出したJSONフォーマットのファイルを読み込み
+-- MAGIC   result_tmp = pd.read_json(tmp)
+-- MAGIC
+-- MAGIC   # Sparkデータフレームに変換
+-- MAGIC   RESULT_TMP = spark.createDataFrame(result_tmp)
+-- MAGIC   
+-- MAGIC   # Webサイトの不備で結果が出力されてない場合、ここで結果をチェックして結果がなければeixtするようにすればよい。
+-- MAGIC   #if len(RESULT_TMP.columns) != 24: 
+-- MAGIC   #  if dbutils.widgets.get("DEBUG") == "YES": print(" Webサイトの不備でレース結果のカラムの出力数が一致しないようだ");
+-- MAGIC   #  return("データなし")
+-- MAGIC   
+-- MAGIC   # 結果をテンポラリビュー化
+-- MAGIC   RESULT_TMP.createOrReplaceTempView("RESULT_TMP")
+-- MAGIC   #RESULT = sql("select * from RESULT_TMP")
+-- MAGIC
+-- MAGIC   #キャストしておく
+-- MAGIC   RESULT      = spark.sql("select * from RESULT_TMP")
+-- MAGIC   RESULT_CAST = RESULT.select([col(c).cast("string") for c in RESULT.columns])
+-- MAGIC
+-- MAGIC
+-- MAGIC   #RESULT = (sql(
+-- MAGIC   #"""
+-- MAGIC   #             select 
+-- MAGIC   #             cast(RACEDATE as string) as RACEDATE,
+-- MAGIC   #             cast(PLACE as string) as PLACE,
+-- MAGIC   #             cast(RACE as string) as RACE,
+-- MAGIC   #             cast(RENTAN3 as string) as RENTAN3,
+-- MAGIC   #             cast(RENTAN3K as string) as RENTAN3K,
+-- MAGIC   #             cast(RENFUKU3 as string) as RENFUKU3,
+-- MAGIC   #             cast(RENFUKU3K as string) as RENFUKU3K,
+-- MAGIC   #             cast(RENTAN2 as string) as RENTAN2,
+-- MAGIC   #             cast(RENTAN2K as string) as RENTAN2K,
+-- MAGIC   #             cast(RENFUKU2 as string) as RENFUKU2,
+-- MAGIC   #             cast(RENFUKU2K as string) as RENFUKU2K,
+-- MAGIC   #             cast(WIDE1 as string) as WIDE1,
+-- MAGIC   #             cast(WIDE1K as string) as WIDE1K,
+-- MAGIC   #             cast(WIDE2 as string) as WIDE2,
+-- MAGIC   #             cast(WIDE2K as string) as WIDE2K,
+-- MAGIC   #             cast(WIDE3 as string) as WIDE3,
+-- MAGIC   #             cast(WIDE3K as string) as WIDE3K,
+-- MAGIC   #             cast(TAN as string) as TAN,
+-- MAGIC   #             cast(TANK as string) as TANK,
+-- MAGIC   #             cast(FUKU1 as string) as FUKU1,
+-- MAGIC   #             cast(FUKU1K as string) as FUKU1K,
+-- MAGIC   #             cast(FUKU2 as string) as FUKU2,
+-- MAGIC   #             cast(FUKU2K as string) as FUKU2K,
+-- MAGIC   #             cast(EOL as string) as EOL
+-- MAGIC   #             FROM RESULT_TMP
+-- MAGIC   #""")
+-- MAGIC   #)
+-- MAGIC
+-- MAGIC   # 結果を記録
+-- MAGIC   RESULT_CAST.write.mode("append").option("mergeSchema", "true").saveAsTable("RESULT")
+-- MAGIC
+-- MAGIC
+
+-- COMMAND ----------
+
+-- MAGIC %md ## ジョブ実行のためデータ取得範囲を再設定
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC # 本日の日付を取得
+-- MAGIC START_DATE = sql("SELECT DATE_ADD(current_date(),0) as tomorrow_date").toPandas().to_string(index=False, header=False)
+-- MAGIC print(START_DATE)
+-- MAGIC
+-- MAGIC # 明日の日付を取得
+-- MAGIC END_DATE = sql("SELECT DATE_ADD(current_date(),1) as tomorrow_date").toPandas().to_string(index=False, header=False)
+-- MAGIC print(END_DATE)
+-- MAGIC
+-- MAGIC # スクレイピング範囲を指定
+-- MAGIC print("スクレイピング範囲を本日と明日に設定")
+-- MAGIC # int型の変数にセット
+-- MAGIC START_YYYY = int(sql("SELECT substr(DATE_ADD(current_date(),0),1,4) as tomorrow_date").toPandas().to_string(index=False, header=False))
+-- MAGIC START_MM = int(sql("SELECT substr(DATE_ADD(current_date(),0),6,2) as tomorrow_date").toPandas().to_string(index=False, header=False))
+-- MAGIC START_DD = int(sql("SELECT substr(DATE_ADD(current_date(),0),9,2) as tomorrow_date").toPandas().to_string(index=False, header=False))
+-- MAGIC
+-- MAGIC END_YYYY = int(sql("SELECT substr(DATE_ADD(current_date(),1),1,4) as tomorrow_date").toPandas().to_string(index=False, header=False))
+-- MAGIC END_MM = int(sql("SELECT substr(DATE_ADD(current_date(),1),6,2) as tomorrow_date").toPandas().to_string(index=False, header=False))
+-- MAGIC END_DD = int(sql("SELECT substr(DATE_ADD(current_date(),1),9,2) as tomorrow_date").toPandas().to_string(index=False, header=False))
+-- MAGIC
+-- MAGIC print("START_YYYY=",START_YYYY)
+-- MAGIC print("START_MM=",  START_MM)
+-- MAGIC print("START_DD=",  START_DD)
+-- MAGIC
+-- MAGIC #print("終了")
+-- MAGIC print("END_YYYY=",END_YYYY)
+-- MAGIC print("END_MM=",  END_MM)
+-- MAGIC print("END_DD=",  END_DD)
+
+-- COMMAND ----------
+
+-- MAGIC %md ## スクレイピング実行
+
+-- COMMAND ----------
+
+-- DBTITLE 0,スクレイピング実行
+-- MAGIC %python
+-- MAGIC from datetime import date, timedelta
+-- MAGIC import datetime
+-- MAGIC import time
+-- MAGIC
+-- MAGIC #####################
+-- MAGIC #開始日付、終了日付を取得
+-- MAGIC #####################
+-- MAGIC def date_range(start, stop, step = timedelta(1)):
+-- MAGIC     current = start
+-- MAGIC     while current <= stop:
+-- MAGIC         yield current
+-- MAGIC         current += step
+-- MAGIC
+-- MAGIC ####################
+-- MAGIC #日付を使用したループ処理
+-- MAGIC ####################
+-- MAGIC for date in date_range(date(START_YYYY,START_MM,START_DD), date(END_YYYY,END_MM,END_DD)):
+-- MAGIC     # 日付を取得
+-- MAGIC     kaisaibi = format(date, '%Y%m%d')
+-- MAGIC
+-- MAGIC     # 各日付ごとに全レース場のレース情報を収集
+-- MAGIC     for place in place_list:
+-- MAGIC        for race in race_list:
+-- MAGIC           
+-- MAGIC           ######################
+-- MAGIC           # 　開始時刻
+-- MAGIC           ######################
+-- MAGIC           dt_now = datetime.datetime.now()
+-- MAGIC           t1 = time.time() 
+-- MAGIC           #print("")
+-- MAGIC           #print(dt_now,end='')
+-- MAGIC           
+-- MAGIC           print(" スクレイピング:", "開催日:",kaisaibi,",場所:",place,",レース:",race,"-->", end='')
+-- MAGIC           
+-- MAGIC           # 競艇サイトのURL（番組表）
+-- MAGIC           url1 = "https://www.boatrace.jp/owpc/pc/race/racelist?rno=" + race + "&jcd=" + place + "&hd=" + kaisaibi
+-- MAGIC           if dbutils.widgets.get("DEBUG") == "YES": print("番組表URL:" + url1)
+-- MAGIC           
+-- MAGIC           # 競艇サイトのURL(レース結果)
+-- MAGIC           url2 = "https://www.boatrace.jp/owpc/pc/race/raceresult?rno=" + race + "&jcd=" + place + "&hd=" + kaisaibi
+-- MAGIC           if dbutils.widgets.get("DEBUG") == "YES": print("レース結果URL:" + url2)
+-- MAGIC           
+-- MAGIC           # スクレイピング開始
+-- MAGIC           dt_now = datetime.datetime.now()
+-- MAGIC           print(dt_now,end='')
+-- MAGIC           
+-- MAGIC           ####################
+-- MAGIC           #print("<<番組表>>")
+-- MAGIC           ####################
+-- MAGIC           ret = bangumi(url1)
+-- MAGIC           if dbutils.widgets.get("DEBUG") == "YES": print("*番組表URLからの戻り値" , ret)
+-- MAGIC           if ret == "データなし":
+-- MAGIC             print(" データなし ",end='')
+-- MAGIC             # 1レース目の番組表がない場合はこの場所ではその日のレースはない。
+-- MAGIC             print("開催なし")
+-- MAGIC             continue        
+-- MAGIC           else:
+-- MAGIC             print(" 取得中...",end='')
+-- MAGIC             if ret is None:
+-- MAGIC               print("[","OK","]",end='')
+-- MAGIC             else:
+-- MAGIC               print("[",ret,"]",end='')
+-- MAGIC               
+-- MAGIC           ######################
+-- MAGIC           #print("<<レース結果>>")
+-- MAGIC           ######################
+-- MAGIC           #ret = result(url2)
+-- MAGIC           #if dbutils.widgets.get("DEBUG") == "YES": print("*レース結果URLからの戻り値" , ret)
+-- MAGIC           #if ret == "データなし":
+-- MAGIC           #  print(" レース結果のデータなし ",end='')
+-- MAGIC           #  print("スキップ")
+-- MAGIC           #  continue
+-- MAGIC           #else:
+-- MAGIC           #  if ret is None:
+-- MAGIC           #    print("[","OK","]",end='')
+-- MAGIC           #  else:
+-- MAGIC           #    print("[",ret,"]",end='')
+-- MAGIC               
+-- MAGIC           #print("<<レコードに変換>>")
+-- MAGIC           #ret = make_one_record()
+-- MAGIC           #if ret == "データなし":
+-- MAGIC           #  print(" データなし ",end='')
+-- MAGIC           #  print("スキップ")
+-- MAGIC           #  continue
+-- MAGIC           #else:
+-- MAGIC           #  if ret is None:
+-- MAGIC           #    print("[","レコード追加OK","]",end='')
+-- MAGIC           #  else:
+-- MAGIC           #
+-- MAGIC           
+-- MAGIC               print("[",ret,"]",end='')
+-- MAGIC               
+-- MAGIC           # 　終了時刻
+-- MAGIC           t2 = time.time()
+-- MAGIC           # 経過時間を表示
+-- MAGIC           elapsed_time = t2-t1
+-- MAGIC           print(f"経過時間：{elapsed_time}")
+
+-- COMMAND ----------
+
+use kyotei_db;
+optimize BANGUMI;
+
+-- COMMAND ----------
+
+use kyotei_db;
+--optimize RESULT;
+
+-- COMMAND ----------
+
+-- MAGIC %sql
+-- MAGIC use kyotei_db;
+-- MAGIC select racedate,count(1) 
+-- MAGIC from (select distinct * from BANGUMI) group by racedate order by racedate
+
+-- COMMAND ----------
+
+-- DBTITLE 1,ブロンズテーブル：番組表と結果を結合
+-- MAGIC %sql
+-- MAGIC create or replace table TRAINING_BRONZE as
+-- MAGIC select 
+-- MAGIC T1.RACEDATE        ,
+-- MAGIC case 
+-- MAGIC         when T1.place = "01" then "桐生"
+-- MAGIC         when T1.place = "02" then "戸田"
+-- MAGIC         when T1.place = "03" then "江戸川"
+-- MAGIC         when T1.place = "04" then "平和島"
+-- MAGIC         when T1.place = "05" then "多摩川"
+-- MAGIC         when T1.place = "06" then "浜名湖"
+-- MAGIC         when T1.place = "07" then "蒲郡"
+-- MAGIC         when T1.place = "08" then "常滑"
+-- MAGIC         when T1.place = "09" then "津"
+-- MAGIC         when T1.place = "10" then "三国"
+-- MAGIC         when T1.place = "11" then "琵琶湖"
+-- MAGIC         when T1.place = "12" then "住之江"
+-- MAGIC         when T1.place = "13" then "尼崎"
+-- MAGIC         when T1.place = "14" then "鳴門"
+-- MAGIC         when T1.place = "15" then "丸亀"
+-- MAGIC         when T1.place = "16" then "児島"
+-- MAGIC         when T1.place = "17" then "宮島"
+-- MAGIC         when T1.place = "18" then "徳山"
+-- MAGIC         when T1.place = "19" then "下関"
+-- MAGIC         when T1.place = "20" then "若松"
+-- MAGIC         when T1.place = "21" then "芦屋"
+-- MAGIC         when T1.place = "22" then "福岡"
+-- MAGIC         when T1.place = "23" then "唐津"
+-- MAGIC         when T1.place = "24" then "大村"
+-- MAGIC       end as PLACE,
+-- MAGIC
+-- MAGIC T1.RACE    ,
+-- MAGIC
+-- MAGIC max(T1.PLAYERID1 ) as PLAYERID1 ,
+-- MAGIC max(T1.PLAYERID2 ) as PLAYERID2 ,
+-- MAGIC max(T1.PLAYERID3 ) as PLAYERID3 ,
+-- MAGIC max(T1.PLAYERID4 ) as PLAYERID4 ,
+-- MAGIC max(T1.PLAYERID5 ) as PLAYERID5 ,
+-- MAGIC max(T1.PLAYERID6 ) as PLAYERID6 ,
+-- MAGIC
+-- MAGIC max(T1.CLASS1    ) as CLASS1,
+-- MAGIC max(T1.CLASS2    ) as CLASS2,
+-- MAGIC max(T1.CLASS3    ) as CLASS3,
+-- MAGIC max(T1.CLASS4    ) as CLASS4,
+-- MAGIC max(T1.CLASS5    ) as CLASS5,
+-- MAGIC max(T1.CLASS6    ) as CLASS6,
+-- MAGIC
+-- MAGIC max(CLUB1        ) as CLUB1,
+-- MAGIC max(CLUB2        ) as CLUB2,
+-- MAGIC max(CLUB3        ) as CLUB3,
+-- MAGIC max(CLUB4        ) as CLUB4,
+-- MAGIC max(CLUB5        ) as CLUB5,
+-- MAGIC max(CLUB6        ) as CLUB6,
+-- MAGIC
+-- MAGIC max(CAST(AGE1 as double)) as AGE1  ,
+-- MAGIC max(CAST(AGE2 as double)) as AGE2  ,
+-- MAGIC max(CAST(AGE3 as double)) as AGE3  ,
+-- MAGIC max(CAST(AGE4 as double)) as AGE4  ,
+-- MAGIC max(CAST(AGE5 as double)) as AGE5  ,
+-- MAGIC max(CAST(AGE6 as double)) as AGE6  ,
+-- MAGIC
+-- MAGIC max(CAST(WEIGHT1 as double)) as WEIGHT1 ,
+-- MAGIC max(CAST(WEIGHT2 as double)) as WEIGHT2 ,
+-- MAGIC max(CAST(WEIGHT3 as double)) as WEIGHT3 ,
+-- MAGIC max(CAST(WEIGHT4 as double)) as WEIGHT4 ,
+-- MAGIC max(CAST(WEIGHT5 as double)) as WEIGHT5 ,
+-- MAGIC max(CAST(WEIGHT6 as double)) as WEIGHT6 ,
+-- MAGIC
+-- MAGIC max(CAST(F1 as double)) as F1  ,
+-- MAGIC max(CAST(F2 as double)) as F2  ,
+-- MAGIC max(CAST(F3 as double)) as F3  ,
+-- MAGIC max(CAST(F4 as double)) as F4  ,
+-- MAGIC max(CAST(F5 as double)) as F5  ,
+-- MAGIC max(CAST(F6 as double)) as F6  ,
+-- MAGIC
+-- MAGIC max(CAST(L1 as double)) as L1  ,
+-- MAGIC max(CAST(L2 as double)) as L2  ,
+-- MAGIC max(CAST(L3 as double)) as L3  ,
+-- MAGIC max(CAST(L4 as double)) as L4  ,
+-- MAGIC max(CAST(L5 as double)) as L5  ,
+-- MAGIC max(CAST(L6 as double)) as L6  ,
+-- MAGIC
+-- MAGIC max(CAST(WIN1RATE1 as double)) as WIN1RATE1      ,
+-- MAGIC max(CAST(WIN1RATE2 as double)) as WIN1RATE2      ,
+-- MAGIC max(CAST(WIN1RATE3 as double)) as WIN1RATE3      ,
+-- MAGIC max(CAST(WIN1RATE4 as double)) as WIN1RATE4      ,
+-- MAGIC max(CAST(WIN1RATE5 as double)) as WIN1RATE5      ,
+-- MAGIC max(CAST(WIN1RATE6 as double)) as WIN1RATE6      ,
+-- MAGIC
+-- MAGIC max(CAST(WIN2RATE1 as double)) as WIN2RATE1      ,
+-- MAGIC max(CAST(WIN2RATE2 as double)) as WIN2RATE2      ,
+-- MAGIC max(CAST(WIN2RATE3 as double)) as WIN2RATE3      ,
+-- MAGIC max(CAST(WIN2RATE4 as double)) as WIN2RATE4      ,
+-- MAGIC max(CAST(WIN2RATE5 as double)) as WIN2RATE5      ,
+-- MAGIC max(CAST(WIN2RATE6 as double)) as WIN2RATE6      ,
+-- MAGIC
+-- MAGIC max(CAST(LOCALWIN1RATE1 as double)) as LOCALWIN1RATE1  ,
+-- MAGIC max(CAST(LOCALWIN1RATE2 as double)) as LOCALWIN1RATE2  ,
+-- MAGIC max(CAST(LOCALWIN1RATE3 as double)) as LOCALWIN1RATE3  ,
+-- MAGIC max(CAST(LOCALWIN1RATE4 as double)) as LOCALWIN1RATE4  ,
+-- MAGIC max(CAST(LOCALWIN1RATE5 as double)) as LOCALWIN1RATE5  ,
+-- MAGIC max(CAST(LOCALWIN1RATE6 as double)) as LOCALWIN1RATE6  ,
+-- MAGIC
+-- MAGIC max(CAST(LOCALWIN2RATE1 as double)) as LOCALWIN2RATE1 ,
+-- MAGIC max(CAST(LOCALWIN2RATE2 as double)) as LOCALWIN2RATE2 ,
+-- MAGIC max(CAST(LOCALWIN2RATE3 as double)) as LOCALWIN2RATE3 ,
+-- MAGIC max(CAST(LOCALWIN2RATE4 as double)) as LOCALWIN2RATE4 ,
+-- MAGIC max(CAST(LOCALWIN2RATE5 as double)) as LOCALWIN2RATE5 ,
+-- MAGIC max(CAST(LOCALWIN2RATE6 as double)) as LOCALWIN2RATE6 ,
+-- MAGIC
+-- MAGIC max(CAST(MOTORWIN2RATE1 as double)) as MOTORWIN2RATE1 ,
+-- MAGIC max(CAST(MOTORWIN2RATE2 as double)) as MOTORWIN2RATE2 ,
+-- MAGIC max(CAST(MOTORWIN2RATE3 as double)) as MOTORWIN2RATE3 ,
+-- MAGIC max(CAST(MOTORWIN2RATE4 as double)) as MOTORWIN2RATE4 ,
+-- MAGIC max(CAST(MOTORWIN2RATE5 as double)) as MOTORWIN2RATE5 ,
+-- MAGIC max(CAST(MOTORWIN2RATE6 as double)) as MOTORWIN2RATE6 ,
+-- MAGIC
+-- MAGIC max(CAST(MOTORWIN3RATE1 as double)) as MOTORWIN3RATE1  ,
+-- MAGIC max(CAST(MOTORWIN3RATE2 as double)) as MOTORWIN3RATE2  ,
+-- MAGIC max(CAST(MOTORWIN3RATE3 as double)) as MOTORWIN3RATE3  ,
+-- MAGIC max(CAST(MOTORWIN3RATE4 as double)) as MOTORWIN3RATE4  ,
+-- MAGIC max(CAST(MOTORWIN3RATE5 as double)) as MOTORWIN3RATE5  ,
+-- MAGIC max(CAST(MOTORWIN3RATE6 as double)) as MOTORWIN3RATE6  ,
+-- MAGIC
+-- MAGIC max(CAST(BOATWIN2RATE1  as double)) as BOATWIN2RATE1,
+-- MAGIC max(CAST(BOATWIN2RATE2  as double)) as BOATWIN2RATE2,
+-- MAGIC max(CAST(BOATWIN2RATE3  as double)) as BOATWIN2RATE3,
+-- MAGIC max(CAST(BOATWIN2RATE4  as double)) as BOATWIN2RATE4,
+-- MAGIC max(CAST(BOATWIN2RATE5  as double)) as BOATWIN2RATE5,
+-- MAGIC max(CAST(BOATWIN2RATE6  as double)) as BOATWIN2RATE6,
+-- MAGIC
+-- MAGIC max(CAST(BOATWIN3RATE1  as double)) as BOATWIN3RATE1,
+-- MAGIC max(CAST(BOATWIN3RATE2  as double)) as BOATWIN3RATE2,
+-- MAGIC max(CAST(BOATWIN3RATE3  as double)) as BOATWIN3RATE3,
+-- MAGIC max(CAST(BOATWIN3RATE4  as double)) as BOATWIN3RATE4,
+-- MAGIC max(CAST(BOATWIN3RATE5  as double)) as BOATWIN3RATE5,
+-- MAGIC max(CAST(BOATWIN3RATE6  as double)) as BOATWIN3RATE6,
+-- MAGIC
+-- MAGIC max(CAST(ST_AVG1 as double)) as ST_AVG1 ,
+-- MAGIC max(CAST(ST_AVG2 as double)) as ST_AVG2 ,
+-- MAGIC max(CAST(ST_AVG3 as double)) as ST_AVG3 ,
+-- MAGIC max(CAST(ST_AVG4 as double)) as ST_AVG4 ,
+-- MAGIC max(CAST(ST_AVG5 as double)) as ST_AVG5 ,
+-- MAGIC max(CAST(ST_AVG6 as double)) as ST_AVG6 ,
+-- MAGIC
+-- MAGIC max(T2.TAN) as TAN,
+-- MAGIC max(T2.TANK) as TANK,
+-- MAGIC max(T2.RENTAN2) as RENTAN2,
+-- MAGIC max(T2.RENTAN2K) as RENTAN2K,
+-- MAGIC max(T2.RENFUKU2) as RENFUKU2,
+-- MAGIC max(T2.RENFUKU2K) as RENFUKU2K,
+-- MAGIC max(T2.RENTAN3) as  RENTAN3, 
+-- MAGIC max(T2.RENTAN3K) as RENTAN3K,
+-- MAGIC max(T2.RENFUKU3) as RENFUKU3,
+-- MAGIC max(T2.RENFUKU3K) as RENFUKU3K,
+-- MAGIC max(T2.WIDE1)   as WIDE1,
+-- MAGIC max(T2.WIDE1K)  as WIDE1K,
+-- MAGIC max(T2.WIDE2)   as WIDE2,
+-- MAGIC max(T2.WIDE2K)  as WIDE2K,
+-- MAGIC max(T2.WIDE3)   as WIDE3,
+-- MAGIC max(T2.WIDE3K)  as WIDE3K
+-- MAGIC
+-- MAGIC from
+-- MAGIC (select distinct * from BANGUMI) as T1 -- distinctで結合
+-- MAGIC LEFT OUTER join 
+-- MAGIC (select distinct * from RESULT)  as T2 -- distinctで結合
+-- MAGIC on 
+-- MAGIC T1.RACEDATE = T2.RACEDATE
+-- MAGIC -- フォーマットが異なるため数値に変換しないと結合できなかった
+-- MAGIC and cast(T1.PLACE as int)  = cast(T2.PLACE as int) and
+-- MAGIC T1.RACE = T2.RACE
+-- MAGIC -- データ取得日によって値の異なるデータがあったのでMAX値で一意にする
+-- MAGIC GROUP BY 1,2,3
+-- MAGIC ;
+
+-- COMMAND ----------
+
+-- MAGIC %sql
+-- MAGIC use kyotei_db;
+-- MAGIC select racedate,count(1) 
+-- MAGIC from TRAINING_BRONZE group by racedate order by racedate
+
+-- COMMAND ----------
+
+-- MAGIC %sql
+-- MAGIC use kyotei_db;
+-- MAGIC select *
+-- MAGIC from TRAINING_BRONZE order by racedate desc,place,cast(race as int)
