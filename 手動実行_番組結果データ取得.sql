@@ -87,6 +87,11 @@
 
 -- COMMAND ----------
 
+-- MAGIC %sql
+-- MAGIC use catalog main;
+
+-- COMMAND ----------
+
 -- DBTITLE 1,履歴データを格納するDB情報
 -- MAGIC %sql
 -- MAGIC CREATE DATABASE IF NOT EXISTS KYOTEI_DB;
@@ -1924,6 +1929,18 @@ optimize RESULT;
 -- MAGIC   RESULT_CAST.write.mode("append").option("mergeSchema", "true").saveAsTable("RESULT")
 -- MAGIC
 -- MAGIC
+
+-- COMMAND ----------
+
+-- MAGIC %sql
+-- MAGIC select
+-- MAGIC min(racedate) , max( racedate) from RESULT;
+
+-- COMMAND ----------
+
+-- MAGIC %sql
+-- MAGIC select
+-- MAGIC min(racedate) , max( racedate) from BANGUMI;
 
 -- COMMAND ----------
 

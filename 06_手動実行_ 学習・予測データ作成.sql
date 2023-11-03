@@ -5,44 +5,6 @@
 
 -- COMMAND ----------
 
--- MAGIC %python
--- MAGIC #　累積テーブル削除
--- MAGIC renfuku = sqlContext.sql(\
--- MAGIC "         select '123' as renfuku \
--- MAGIC union all select '124' \
--- MAGIC ").rdd.map(lambda row : row[0]).collect()
--- MAGIC
--- MAGIC #変数取得
--- MAGIC dbutils.widgets.dropdown("RENFUKU", "123", [str(x) for x in renfuku],"3連複")
--- MAGIC RENFUKU=dbutils.widgets.get("RENFUKU")
--- MAGIC print(RENFUKU)
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC #　累積テーブル削除
--- MAGIC isDrop = sqlContext.sql(\
--- MAGIC "         select 'YES' as isDrop \
--- MAGIC union all select 'NO' \
--- MAGIC ").rdd.map(lambda row : row[0]).collect()
--- MAGIC
--- MAGIC #変数取得
--- MAGIC dbutils.widgets.dropdown("DROPTABLE", "NO", [str(x) for x in isDrop],"累積テーブル削除")
--- MAGIC DROPTABLE=dbutils.widgets.get("DROPTABLE")
--- MAGIC print(DROPTABLE)
-
--- COMMAND ----------
-
--- MAGIC %python
--- MAGIC kekka_table = "kekka_" + RENFUKU
--- MAGIC if DROPTABLE == "YES":
--- MAGIC   sql("drop table if exists " + kekka_table)
--- MAGIC   print("drop:" , "drop table if exists " + kekka_table)
--- MAGIC else:
--- MAGIC   print("keep:" , kekka_table)
-
--- COMMAND ----------
-
 -- DBTITLE 1, データチェック用
 select racedate,count(1)
 from training_base2
@@ -243,8 +205,8 @@ group by racedate order by racedate;
 -- MAGIC --,COURCE6_LOCAL_WIN12_RATE6
 -- MAGIC ,COURCE6_LOCAL_WIN123_RATE6
 -- MAGIC
--- MAGIC --,TAN
--- MAGIC --,TANK
+-- MAGIC ,TAN
+-- MAGIC ,TANK
 -- MAGIC --,WIDE1
 -- MAGIC --,WIDE1K
 -- MAGIC --,WIDE2
@@ -254,12 +216,12 @@ group by racedate order by racedate;
 -- MAGIC
 -- MAGIC ,RENTAN2
 -- MAGIC ,RENTAN2K
--- MAGIC ,RENFUKU2
--- MAGIC ,RENFUKU2K
+-- MAGIC --,RENFUKU2
+-- MAGIC --,RENFUKU2K
 -- MAGIC ,RENTAN3
 -- MAGIC ,RENTAN3K
--- MAGIC ,RENFUKU3K
--- MAGIC ,RENFUKU3
+-- MAGIC --,RENFUKU3K
+-- MAGIC --,RENFUKU3
 -- MAGIC from training_base2
 -- MAGIC ;
 
@@ -289,15 +251,14 @@ group by racedate order by racedate;
 
 -- MAGIC %python
 -- MAGIC sqltext=f"""
--- MAGIC create or replace table training_123f
+-- MAGIC create or replace table training
 -- MAGIC as 
 -- MAGIC select 
--- MAGIC *,
--- MAGIC case when RENFUKU3 = '1=2=3'  then 1 else 0 end as kekka 
+-- MAGIC *
 -- MAGIC from training_base3 
--- MAGIC --where racedate between '20220708' and '20230702' -- 明示的に指定する場合
--- MAGIC where racedate between '{START_DATE}' and '{END_DATE}' -- トレーニングのための期間(12month)　
--- MAGIC and   rentan3 is not null -- NULLデータは除外、且つ当日データは含まれない
+-- MAGIC where racedate between '20220706' and '20230630' -- 明示的に指定する場合
+-- MAGIC --where racedate between '{START_DATE}' and '{END_DATE}' -- トレーニングのための期間(12month)　
+-- MAGIC and   rentan3 is not null -- NULLデータは含まないので当日データは含まれない
 -- MAGIC """
 -- MAGIC print(sqltext)
 -- MAGIC
@@ -307,8 +268,13 @@ group by racedate order by racedate;
 -- COMMAND ----------
 
 -- MAGIC %sql
--- MAGIC select racedate,count(1) from  training_123f group by 1 order by 1
+-- MAGIC select racedate,count(1) from  training group by 1 order by 1
 -- MAGIC ;
+
+-- COMMAND ----------
+
+-- MAGIC %sql
+-- MAGIC select * from  training order by 1
 
 -- COMMAND ----------
 
@@ -318,15 +284,15 @@ group by racedate order by racedate;
 
 -- MAGIC %python
 -- MAGIC sqltext=f"""
--- MAGIC create or replace table predict_123f
+-- MAGIC create or replace table predict
 -- MAGIC as 
 -- MAGIC select 
--- MAGIC *,
--- MAGIC case when RENFUKU3 = '1=2=3'  then 1 else 0 end as kekka 
+-- MAGIC *
 -- MAGIC from training_base3 
--- MAGIC --where racedate between '20230717' and '20230717' -- 明示的に指定する場合
+-- MAGIC where racedate between '20230701' and '20230930' -- 明示的に指定する場合
 -- MAGIC --where racedate = '{END_DATE}' 
--- MAGIC where racedate = ( select max(racedate) from training_base3) -- 取得済みデータの最終日のみ指定する場合
+-- MAGIC --where racedate = ( select max(racedate) from training_base3) -- 取得済みデータの最終日のみ指定する場合
+-- MAGIC --and  rentan3 is null -- 当日データは結果がNULLなのでNULLを含むデータを指定
 -- MAGIC """
 -- MAGIC print(sqltext)
 -- MAGIC
@@ -336,13 +302,13 @@ group by racedate order by racedate;
 -- COMMAND ----------
 
 -- MAGIC %sql
--- MAGIC select racedate,count(1) from  predict_123f group by 1 order by 1
+-- MAGIC select racedate,count(1) from  predict group by 1 order by 1
 -- MAGIC ;
 
 -- COMMAND ----------
 
 -- MAGIC %sql
--- MAGIC select * from  predict_123f;
+-- MAGIC select * from  predict;
 
 -- COMMAND ----------
 
@@ -352,14 +318,9 @@ group by racedate order by racedate;
 -- COMMAND ----------
 
 -- MAGIC %sql
--- MAGIC select min(racedate), max(racedate),count(1) from  training_123f;
+-- MAGIC select min(racedate), max(racedate),count(1) from  training;
 
 -- COMMAND ----------
 
 -- MAGIC %sql
--- MAGIC select min(racedate), max(racedate),count(1) from  predict_123f;
-
--- COMMAND ----------
-
--- MAGIC %sql
--- MAGIC select * from  predict_123f;
+-- MAGIC select min(racedate), max(racedate),count(1) from  predict;
