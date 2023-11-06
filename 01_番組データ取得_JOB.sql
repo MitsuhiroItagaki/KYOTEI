@@ -89,6 +89,8 @@
 
 -- DBTITLE 1,履歴データを格納するDB情報
 -- MAGIC %sql
+-- MAGIC use catalog main;
+-- MAGIC
 -- MAGIC CREATE DATABASE IF NOT EXISTS KYOTEI_DB;
 -- MAGIC use kyotei_db;
 
@@ -1967,6 +1969,7 @@ select racedate,count(1) from bangumi group by 1 order by 1;
 -- COMMAND ----------
 
 -- MAGIC %md ## スクレイピング実行
+-- MAGIC 上のセルでスクレイピング範囲を本日と明日に設定している
 
 -- COMMAND ----------
 
@@ -2085,7 +2088,13 @@ use kyotei_db;
 -- MAGIC %sql
 -- MAGIC use kyotei_db;
 -- MAGIC select racedate,count(1) 
--- MAGIC from (select distinct * from BANGUMI) group by racedate order by racedate
+-- MAGIC from (select distinct * from BANGUMI) 
+-- MAGIC group by racedate 
+-- MAGIC order by racedate
+
+-- COMMAND ----------
+
+select distinct * from BANGUMI
 
 -- COMMAND ----------
 

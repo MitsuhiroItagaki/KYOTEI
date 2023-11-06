@@ -87,13 +87,10 @@
 
 -- COMMAND ----------
 
--- MAGIC %sql
--- MAGIC use catalog main;
-
--- COMMAND ----------
-
 -- DBTITLE 1,履歴データを格納するDB情報
 -- MAGIC %sql
+-- MAGIC use catalog main;
+-- MAGIC
 -- MAGIC CREATE DATABASE IF NOT EXISTS KYOTEI_DB;
 -- MAGIC use kyotei_db;
 
@@ -2062,6 +2059,7 @@ optimize RESULT;
 
 -- DBTITLE 1,ブロンズテーブル：番組表と結果を結合
 -- MAGIC %sql
+-- MAGIC --  RACEDATE,PLACE,RACEでグルーピングし重複を排除
 -- MAGIC create or replace table TRAINING_BRONZE as
 -- MAGIC select 
 -- MAGIC T1.RACEDATE        ,

@@ -11,12 +11,46 @@
 # COMMAND ----------
 
 # MAGIC %sh
-# MAGIC ls -l /Workspace/Repos/mitsuhiro.itagaki@databricks.com/KYOTEI/bangumi20220101_20230903.csv.zip
+# MAGIC ls -l /Workspace/Repos/mitsuhiro.itagaki@databricks.com/KYOTEI/Backup_files/bangumi20220101_20230903.csv.zip
 
 # COMMAND ----------
 
 # MAGIC %sh
-# MAGIC
+# MAGIC ls -l /Workspace/Repos/mitsuhiro.itagaki@databricks.com/KYOTEI/Backup_files/result20220101_20230903.csv.zip
+
+# COMMAND ----------
+
+import pandas as pd
+
+# COMMAND ----------
+
+bangumi_df = spark.createDataFrame(pd.read_csv('/Workspace/Repos/mitsuhiro.itagaki@databricks.com/KYOTEI/Backup_files/bangumi20220101_20230903.csv.zip'))
+bangumi_df.createOrReplaceTempView('bangumi_tmp')
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from bangumi_tmp
+
+# COMMAND ----------
+
+result_df = spark.createDataFrame(pd.read_csv('/Workspace/Repos/mitsuhiro.itagaki@databricks.com/KYOTEI/Backup_files/result20220101_20230903.csv.zip'))
+result_df.createOrReplaceTempView('result_tmp')
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from result_tmp
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC insert into bangumi select * from bangumi_tmp;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC insert into result select * from result_tmp;
 
 # COMMAND ----------
 

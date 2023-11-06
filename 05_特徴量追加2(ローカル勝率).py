@@ -24,11 +24,6 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC select * from TRAINING_SILVER order by racedate desc;
-
-# COMMAND ----------
-
 # MAGIC %md ## 特徴量の追加
 
 # COMMAND ----------
@@ -85,6 +80,7 @@
 # MAGIC       ) as WIN3_COUNT
 # MAGIC     from
 # MAGIC       TRAINING_SILVER
+# MAGIC       --training_base1
 # MAGIC     GROUP BY
 # MAGIC       RACEDATE,
 # MAGIC       PLAYERID,
@@ -163,6 +159,7 @@
 # MAGIC       ) as WIN3_COUNT
 # MAGIC     from
 # MAGIC       TRAINING_SILVER
+# MAGIC       --training_base1
 # MAGIC     GROUP BY
 # MAGIC       RACEDATE,
 # MAGIC       PLAYERID,
@@ -242,6 +239,7 @@
 # MAGIC       ) as WIN3_COUNT
 # MAGIC     from
 # MAGIC       TRAINING_SILVER
+# MAGIC       --training_base1
 # MAGIC     GROUP BY
 # MAGIC       RACEDATE,
 # MAGIC       PLAYERID,
@@ -320,6 +318,7 @@
 # MAGIC       ) as WIN3_COUNT
 # MAGIC     from
 # MAGIC       TRAINING_SILVER
+# MAGIC       --training_base1
 # MAGIC     GROUP BY
 # MAGIC       RACEDATE,
 # MAGIC       PLAYERID,
@@ -398,6 +397,7 @@
 # MAGIC       ) as WIN3_COUNT
 # MAGIC     from
 # MAGIC       TRAINING_SILVER
+# MAGIC       --training_base1
 # MAGIC     GROUP BY
 # MAGIC       RACEDATE,
 # MAGIC       PLAYERID,
@@ -476,6 +476,7 @@
 # MAGIC       ) as WIN3_COUNT
 # MAGIC     from
 # MAGIC       TRAINING_SILVER
+# MAGIC       --training_base1
 # MAGIC     GROUP BY
 # MAGIC       RACEDATE,
 # MAGIC       PLAYERID,
@@ -533,12 +534,44 @@
 
 # MAGIC %python
 # MAGIC # 最初に既存のフィーチャーストアテーブルを削除しておきます。
-# MAGIC fs.drop_table("FS_COURCE1_LOCAL_WINRATE")
-# MAGIC fs.drop_table("FS_COURCE2_LOCAL_WINRATE")
-# MAGIC fs.drop_table("FS_COURCE3_LOCAL_WINRATE")
-# MAGIC fs.drop_table("FS_COURCE4_LOCAL_WINRATE")
-# MAGIC fs.drop_table("FS_COURCE5_LOCAL_WINRATE")
-# MAGIC fs.drop_table("FS_COURCE6_LOCAL_WINRATE")
+# MAGIC try: 
+# MAGIC   fs.drop_table("FS_COURCE1_LOCAL_WINRATE") 
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try: 
+# MAGIC   fs.drop_table("FS_COURCE2_LOCAL_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try:
+# MAGIC   fs.drop_table("FS_COURCE3_LOCAL_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try:
+# MAGIC   fs.drop_table("FS_COURCE4_LOCAL_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try:
+# MAGIC   fs.drop_table("FS_COURCE5_LOCAL_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try:
+# MAGIC   fs.drop_table("FS_COURCE6_LOCAL_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+
+# COMMAND ----------
+
+# MAGIC %md データチェック
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select count(*) from local1 where place is null;
 
 # COMMAND ----------
 
@@ -548,9 +581,6 @@
 
 # MAGIC %python
 # MAGIC # このセルは、Feature Storeクライアントv0.3.6で導入されたAPIを使用しています。
-# MAGIC # v0.3.5以下をお使いの場合は、このセルをスキップまたはコメントアウトして、コメントを解除してCmd 20を実行してください。
-# MAGIC
-# MAGIC #spark.conf.set("spark.sql.shuffle.partitions", "5")
 # MAGIC
 # MAGIC fs.create_table(
 # MAGIC     name="FS_COURCE1_LOCAL_WINRATE",
@@ -558,36 +588,55 @@
 # MAGIC     df=df_COURCE1_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
 # MAGIC     description="この場所での１コースでの勝率",
 # MAGIC )
-# MAGIC fs.create_table(
-# MAGIC     name="FS_COURCE2_LOCAL_WINRATE",
-# MAGIC     primary_keys=["RACEDATE","PLACE","PLAYERID2"],#一意キーの指定
-# MAGIC     df=df_COURCE2_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-# MAGIC     description="この場所での2コースでの勝率",
-# MAGIC )
-# MAGIC fs.create_table(
-# MAGIC     name="FS_COURCE3_LOCAL_WINRATE",
-# MAGIC     primary_keys=["RACEDATE","PLACE","PLAYERID3"],#一意キーの指定
-# MAGIC     df=df_COURCE3_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-# MAGIC     description="この場所での3コースでの勝率",
-# MAGIC )
-# MAGIC fs.create_table(
-# MAGIC     name="FS_COURCE4_LOCAL_WINRATE",
-# MAGIC     primary_keys=["RACEDATE","PLACE","PLAYERID4"],#一意キーの指定
-# MAGIC     df=df_COURCE4_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-# MAGIC     description="この場所での4コースでの勝率",
-# MAGIC )
-# MAGIC fs.create_table(
-# MAGIC     name="FS_COURCE5_LOCAL_WINRATE",
-# MAGIC     primary_keys=["RACEDATE","PLACE","PLAYERID5"],#一意キーの指定
-# MAGIC     df=df_COURCE5_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-# MAGIC     description="この場所での5コースでの勝率",
-# MAGIC )
-# MAGIC fs.create_table(
-# MAGIC     name="FS_COURCE6_LOCAL_WINRATE",
-# MAGIC     primary_keys=["RACEDATE","PLACE","PLAYERID6"],#一意キーの指定
-# MAGIC     df=df_COURCE6_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-# MAGIC     description="この場所での6コースでの勝率",
-# MAGIC )
+
+# COMMAND ----------
+
+fs.create_table(
+    name="FS_COURCE2_LOCAL_WINRATE",
+    primary_keys=["RACEDATE","PLACE","PLAYERID2"],#一意キーの指定
+    df=df_COURCE2_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
+    description="この場所での2コースでの勝率",
+)
+
+# COMMAND ----------
+
+fs.create_table(
+    name="FS_COURCE3_LOCAL_WINRATE",
+    primary_keys=["RACEDATE","PLACE","PLAYERID3"],#一意キーの指定
+    df=df_COURCE3_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
+    description="この場所での3コースでの勝率",
+)
+
+# COMMAND ----------
+
+fs.create_table(
+    name="FS_COURCE4_LOCAL_WINRATE",
+    primary_keys=["RACEDATE","PLACE","PLAYERID4"],#一意キーの指定
+    df=df_COURCE4_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
+    description="この場所での4コースでの勝率",
+)
+
+# COMMAND ----------
+
+fs.create_table(
+    name="FS_COURCE5_LOCAL_WINRATE",
+    primary_keys=["RACEDATE","PLACE","PLAYERID5"],#一意キーの指定
+    df=df_COURCE5_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
+    description="この場所での5コースでの勝率",
+)
+
+# COMMAND ----------
+
+fs.create_table(
+    name="FS_COURCE6_LOCAL_WINRATE",
+    primary_keys=["RACEDATE","PLACE","PLAYERID6"],#一意キーの指定
+    df=df_COURCE6_LOCAL_WINRATE,#このデータフレームをフィーチャーストアに書き出す
+    description="この場所での6コースでの勝率",
+)
+
+# COMMAND ----------
+
+# MAGIC %md ### トレーニング用データの作成
 
 # COMMAND ----------
 
@@ -598,17 +647,12 @@
 # MAGIC import math
 # MAGIC from datetime import timedelta
 # MAGIC import mlflow.pyfunc
-# MAGIC
-
-# COMMAND ----------
-
-# MAGIC %md ### トレーニング用データの作成
 
 # COMMAND ----------
 
 # MAGIC %python
 # MAGIC # 事前に定義しているシルバーテーブルを使用
-# MAGIC training_base2 = sql("select * from TRAINING_base1")
+# MAGIC training_base2 = sql("select * from TRAINING_SILVER")
 
 # COMMAND ----------
 
@@ -700,7 +744,7 @@
 # MAGIC
 # MAGIC 1. 各フィーチャーは `FeatureLookup` の `lookup_key` に従って生の入力データと結合される。
 # MAGIC
-# MAGIC そして、`TrainingSet` は学習用の DataFrame に変換されます。この DataFrame には taxi_data のカラムと、 `FeatureLookups` で指定された特徴が含まれる。
+# MAGIC そして、`TrainingSet` は学習用の DataFrame に変換されます。
 
 # COMMAND ----------
 
@@ -785,9 +829,9 @@ print("Creation timestamp: {}".format(experiment.creation_time))
 
 # COMMAND ----------
 
-# DBTITLE 1,トレーニング用のベーステーブル
+# DBTITLE 1,トレーニング用の特徴量を追加したテーブル2
 # MAGIC %sql
-# MAGIC create or replace table training_base2 as
+# MAGIC create or replace table training_feature2 as
 # MAGIC select 
 # MAGIC distinct 
 # MAGIC  RACEDATE -- 特徴量にはしない
@@ -808,37 +852,37 @@ print("Creation timestamp: {}".format(experiment.creation_time))
 # MAGIC ,CLASS5
 # MAGIC ,CLASS6
 # MAGIC
-# MAGIC --,CLUB1
-# MAGIC --,CLUB2
-# MAGIC --,CLUB3
-# MAGIC --,CLUB4
-# MAGIC --,CLUB5
-# MAGIC --,CLUB6
-# MAGIC --,AGE1
-# MAGIC --,AGE2
-# MAGIC --,AGE3
-# MAGIC --,AGE4
-# MAGIC --,AGE5
-# MAGIC --,AGE6
-# MAGIC --,WEIGHT1
-# MAGIC --,WEIGHT2
-# MAGIC --,WEIGHT3
-# MAGIC --,WEIGHT4
-# MAGIC --,WEIGHT5
-# MAGIC --,WEIGHT6
+# MAGIC ,CLUB1
+# MAGIC ,CLUB2
+# MAGIC ,CLUB3
+# MAGIC ,CLUB4
+# MAGIC ,CLUB5
+# MAGIC ,CLUB6
+# MAGIC ,AGE1
+# MAGIC ,AGE2
+# MAGIC ,AGE3
+# MAGIC ,AGE4
+# MAGIC ,AGE5
+# MAGIC ,AGE6
+# MAGIC ,WEIGHT1
+# MAGIC ,WEIGHT2
+# MAGIC ,WEIGHT3
+# MAGIC ,WEIGHT4
+# MAGIC ,WEIGHT5
+# MAGIC ,WEIGHT6
 # MAGIC
-# MAGIC --,F1
-# MAGIC --,F2
-# MAGIC --,F3
-# MAGIC --,F4
-# MAGIC --,F5
-# MAGIC --,F6
-# MAGIC --,L1
-# MAGIC --,L2
-# MAGIC --,L3
-# MAGIC --,L4
-# MAGIC --,L5
-# MAGIC --,L6
+# MAGIC ,F1
+# MAGIC ,F2
+# MAGIC ,F3
+# MAGIC ,F4
+# MAGIC ,F5
+# MAGIC ,F6
+# MAGIC ,L1
+# MAGIC ,L2
+# MAGIC ,L3
+# MAGIC ,L4
+# MAGIC ,L5
+# MAGIC ,L6
 # MAGIC
 # MAGIC ,WIN1RATE1
 # MAGIC ,WIN1RATE2
@@ -903,72 +947,65 @@ print("Creation timestamp: {}".format(experiment.creation_time))
 # MAGIC ,ST_AVG5
 # MAGIC ,ST_AVG6
 # MAGIC
-# MAGIC --,COURCE1_RACE_COUNT1
-# MAGIC ,COURCE1_WIN1_RATE1
-# MAGIC ,COURCE1_WIN12_RATE1
-# MAGIC ,COURCE1_WIN123_RATE1
+# MAGIC -- ,COURCE1_RACE_COUNT1
+# MAGIC -- ,COURCE1_WIN1_RATE1
+# MAGIC -- ,COURCE1_WIN12_RATE1
+# MAGIC -- ,COURCE1_WIN123_RATE1
 # MAGIC
-# MAGIC --,COURCE2_RACE_COUNT2
-# MAGIC ,COURCE2_WIN1_RATE2
-# MAGIC ,COURCE2_WIN12_RATE2
-# MAGIC ,COURCE2_WIN123_RATE2
+# MAGIC -- ,COURCE2_RACE_COUNT2
+# MAGIC -- ,COURCE2_WIN1_RATE2
+# MAGIC -- ,COURCE2_WIN12_RATE2
+# MAGIC -- ,COURCE2_WIN123_RATE2
 # MAGIC
-# MAGIC --,COURCE3_RACE_COUNT3
-# MAGIC ,COURCE3_WIN1_RATE3
-# MAGIC ,COURCE3_WIN12_RATE3
-# MAGIC ,COURCE3_WIN123_RATE3
+# MAGIC -- ,COURCE3_RACE_COUNT3
+# MAGIC -- ,COURCE3_WIN1_RATE3
+# MAGIC -- ,COURCE3_WIN12_RATE3
+# MAGIC -- ,COURCE3_WIN123_RATE3
 # MAGIC
-# MAGIC --,COURCE4_RACE_COUNT4
-# MAGIC ,COURCE4_WIN1_RATE4
-# MAGIC ,COURCE4_WIN12_RATE4
-# MAGIC ,COURCE4_WIN123_RATE4
+# MAGIC -- ,COURCE4_RACE_COUNT4
+# MAGIC -- ,COURCE4_WIN1_RATE4
+# MAGIC -- ,COURCE4_WIN12_RATE4
+# MAGIC -- ,COURCE4_WIN123_RATE4
 # MAGIC
-# MAGIC --,COURCE5_RACE_COUNT5
-# MAGIC ,COURCE5_WIN1_RATE5
-# MAGIC ,COURCE5_WIN12_RATE5
-# MAGIC ,COURCE5_WIN123_RATE5
+# MAGIC -- ,COURCE5_RACE_COUNT5
+# MAGIC -- ,COURCE5_WIN1_RATE5
+# MAGIC -- ,COURCE5_WIN12_RATE5
+# MAGIC -- ,COURCE5_WIN123_RATE5
 # MAGIC
-# MAGIC --,COURCE6_RACE_COUNT6
-# MAGIC ,COURCE6_WIN1_RATE6
-# MAGIC ,COURCE6_WIN12_RATE6
-# MAGIC ,COURCE6_WIN123_RATE6
+# MAGIC -- ,COURCE6_RACE_COUNT6
+# MAGIC -- ,COURCE6_WIN1_RATE6
+# MAGIC -- ,COURCE6_WIN12_RATE6
+# MAGIC -- ,COURCE6_WIN123_RATE6
 # MAGIC
-# MAGIC --,COURCE1_LOCAL_RACE_COUNT1
+# MAGIC ,COURCE1_LOCAL_RACE_COUNT1
 # MAGIC ,COURCE1_LOCAL_WIN1_RATE1
 # MAGIC ,COURCE1_LOCAL_WIN12_RATE1
 # MAGIC ,COURCE1_LOCAL_WIN123_RATE1
 # MAGIC
-# MAGIC --,COURCE2_LOCAL_RACE_COUNT2
+# MAGIC ,COURCE2_LOCAL_RACE_COUNT2
 # MAGIC ,COURCE2_LOCAL_WIN1_RATE2
 # MAGIC ,COURCE2_LOCAL_WIN12_RATE2
 # MAGIC ,COURCE2_LOCAL_WIN123_RATE2
 # MAGIC
-# MAGIC --,COURCE3_LOCAL_RACE_COUNT3
+# MAGIC ,COURCE3_LOCAL_RACE_COUNT3
 # MAGIC ,COURCE3_LOCAL_WIN1_RATE3
 # MAGIC ,COURCE3_LOCAL_WIN12_RATE3
 # MAGIC ,COURCE3_LOCAL_WIN123_RATE3
 # MAGIC
-# MAGIC --,COURCE4_LOCAL_RACE_COUNT4
+# MAGIC ,COURCE4_LOCAL_RACE_COUNT4
 # MAGIC ,COURCE4_LOCAL_WIN1_RATE4
 # MAGIC ,COURCE4_LOCAL_WIN12_RATE4
 # MAGIC ,COURCE4_LOCAL_WIN123_RATE4
 # MAGIC
-# MAGIC --,COURCE5_LOCAL_RACE_COUNT5
-# MAGIC --,COURCE5_LOCAL_WIN1_RATE5
-# MAGIC --,COURCE5_LOCAL_WIN12_RATE5
+# MAGIC ,COURCE5_LOCAL_RACE_COUNT5
+# MAGIC ,COURCE5_LOCAL_WIN1_RATE5
+# MAGIC ,COURCE5_LOCAL_WIN12_RATE5
 # MAGIC ,COURCE5_LOCAL_WIN123_RATE5
 # MAGIC
-# MAGIC --,COURCE6vRACE_COUNT6
+# MAGIC ,COURCE6_LOCAL_RACE_COUNT6
 # MAGIC ,COURCE6_LOCAL_WIN1_RATE6
 # MAGIC ,COURCE6_LOCAL_WIN12_RATE6
 # MAGIC ,COURCE6_LOCAL_WIN123_RATE6
-# MAGIC
-# MAGIC --,CLASS3 - CLASS4 as DIFF_CLASS_3AND4
-# MAGIC --,WIN1RATE3 - WIN1RATE4 as DIFF_WIN1RATE_3AND4
-# MAGIC --,WIN2RATE3 - WIN2RATE4 as DIFF_WIN2RATE_3AND4
-# MAGIC --,LOCALWIN1RATE3 - LOCALWIN1RATE4 as DIFF_LOCALWIN1RATE_3AND4
-# MAGIC --,LOCALWIN2RATE3 - LOCALWIN2RATE4 as DIFF_LOCALWIN2RATE_3AND4
-# MAGIC --,COURCE3_WIN123_RATE - COURCE4_WIN123_RATE as DIFF_COURCE_WIN123_RATE_3AND4
 # MAGIC
 # MAGIC ,TAN
 # MAGIC ,TANK
@@ -988,33 +1025,3 @@ print("Creation timestamp: {}".format(experiment.creation_time))
 # MAGIC ,RENFUKU3
 # MAGIC from training_tmp2
 # MAGIC ;
-
-# COMMAND ----------
-
-# DBTITLE 1,チェック用
-# MAGIC %sql
-# MAGIC select racedate,count(1) from training_base2 
-# MAGIC group by racedate 
-# MAGIC order by racedate desc;
-
-# COMMAND ----------
-
-# DBTITLE 1,チェック用
-# MAGIC %sql
-# MAGIC select racedate,count(1) from training_base2 
-# MAGIC where rentan3 is null  
-# MAGIC group by racedate order by racedate desc;
-
-# COMMAND ----------
-
-# DBTITLE 1,チェック用
-# MAGIC %sql
-# MAGIC select * from training_base2 
-# MAGIC order by racedate ;
-
-# COMMAND ----------
-
-# DBTITLE 1,チェック用
-# MAGIC %sql
-# MAGIC select * from training_base2 
-# MAGIC order by racedate desc;

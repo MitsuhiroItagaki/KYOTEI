@@ -26,13 +26,31 @@
 
 # DBTITLE 1,結果表
 # MAGIC %sql
-# MAGIC select * from result order by racedate,place,cast(race as int);
+# MAGIC select * from result 
+# MAGIC --where place is null
+# MAGIC order by racedate desc ,place,cast(race as int);
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select RACEDATE,count(1) from result 
+# MAGIC group by RACEDATE
+# MAGIC order by RACEDATE
 
 # COMMAND ----------
 
 # DBTITLE 1,番組表
 # MAGIC %sql
-# MAGIC select * from bangumi order by racedate,place,cast(race as int);
+# MAGIC select * from bangumi 
+# MAGIC --where place is null
+# MAGIC order by racedate desc ,place,cast(race as int);
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select RACEDATE,count(1) from bangumi 
+# MAGIC group by RACEDATE
+# MAGIC order by RACEDATE
 
 # COMMAND ----------
 
@@ -42,15 +60,15 @@
 # MAGIC select 
 # MAGIC T1.RACEDATE        ,
 # MAGIC case 
-# MAGIC         when T1.place = "01" then "桐生"
-# MAGIC         when T1.place = "02" then "戸田"
-# MAGIC         when T1.place = "03" then "江戸川"
-# MAGIC         when T1.place = "04" then "平和島"
-# MAGIC         when T1.place = "05" then "多摩川"
-# MAGIC         when T1.place = "06" then "浜名湖"
-# MAGIC         when T1.place = "07" then "蒲郡"
-# MAGIC         when T1.place = "08" then "常滑"
-# MAGIC         when T1.place = "09" then "津"
+# MAGIC         when T1.place = "01" or T1.place = "1" then "桐生"
+# MAGIC         when T1.place = "02" or T1.place = "2" then "戸田"
+# MAGIC         when T1.place = "03" or T1.place = "3" then "江戸川"
+# MAGIC         when T1.place = "04" or T1.place = "4" then "平和島"
+# MAGIC         when T1.place = "05" or T1.place = "5" then "多摩川"
+# MAGIC         when T1.place = "06" or T1.place = "6" then "浜名湖"
+# MAGIC         when T1.place = "07" or T1.place = "7" then "蒲郡"
+# MAGIC         when T1.place = "08" or T1.place = "8" then "常滑"
+# MAGIC         when T1.place = "09" or T1.place = "9" then "津"
 # MAGIC         when T1.place = "10" then "三国"
 # MAGIC         when T1.place = "11" then "琵琶湖"
 # MAGIC         when T1.place = "12" then "住之江"
@@ -215,11 +233,6 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from training_bronze;
-
-# COMMAND ----------
-
-# MAGIC %sql
 # MAGIC select racedate,count(1) from  training_bronze group by 1 order by 1
 # MAGIC ;
 
@@ -286,24 +299,24 @@
 # MAGIC         when CLASS6 = "B1" then cast(200 as double)
 # MAGIC         when CLASS6 = "B2" then cast(100 as double)
 # MAGIC end as CLASS6 
-# MAGIC --,CLUB1
-# MAGIC --,CLUB2
-# MAGIC --,CLUB3
-# MAGIC --,CLUB4
-# MAGIC --,CLUB5
-# MAGIC --,CLUB6
-# MAGIC --,AGE1
-# MAGIC --,AGE2
-# MAGIC --,AGE3
-# MAGIC --,AGE4
-# MAGIC --,AGE5
-# MAGIC --,AGE6
-# MAGIC --,WEIGHT1
-# MAGIC --,WEIGHT2
-# MAGIC --,WEIGHT3
-# MAGIC --,WEIGHT4
-# MAGIC --,WEIGHT5
-# MAGIC --,WEIGHT6
+# MAGIC ,CLUB1
+# MAGIC ,CLUB2
+# MAGIC ,CLUB3
+# MAGIC ,CLUB4
+# MAGIC ,CLUB5
+# MAGIC ,CLUB6
+# MAGIC ,AGE1
+# MAGIC ,AGE2
+# MAGIC ,AGE3
+# MAGIC ,AGE4
+# MAGIC ,AGE5
+# MAGIC ,AGE6
+# MAGIC ,WEIGHT1
+# MAGIC ,WEIGHT2
+# MAGIC ,WEIGHT3
+# MAGIC ,WEIGHT4
+# MAGIC ,WEIGHT5
+# MAGIC ,WEIGHT6
 # MAGIC ,F1
 # MAGIC ,F2
 # MAGIC ,F3

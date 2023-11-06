@@ -482,13 +482,37 @@ fs = feature_store.FeatureStoreClient()
 
 # COMMAND ----------
 
-# 最初に既存のフィーチャーストアテーブルを削除しておきます。
-fs.drop_table("FS_COURCE1_WINRATE")
-fs.drop_table("FS_COURCE2_WINRATE")
-fs.drop_table("FS_COURCE3_WINRATE")
-fs.drop_table("FS_COURCE4_WINRATE")
-fs.drop_table("FS_COURCE5_WINRATE")
-fs.drop_table("FS_COURCE6_WINRATE")
+# MAGIC %python
+# MAGIC # 最初に既存のフィーチャーストアテーブルを削除しておきます。
+# MAGIC try: 
+# MAGIC   fs.drop_table("FS_COURCE1_WINRATE") 
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try: 
+# MAGIC   fs.drop_table("FS_COURCE2_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try:
+# MAGIC   fs.drop_table("FS_COURCE3_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try:
+# MAGIC   fs.drop_table("FS_COURCE4_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try:
+# MAGIC   fs.drop_table("FS_COURCE5_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
+# MAGIC
+# MAGIC try:
+# MAGIC   fs.drop_table("FS_COURCE6_WINRATE")
+# MAGIC except:
+# MAGIC   print('table does not exists')
 
 # COMMAND ----------
 
@@ -497,46 +521,68 @@ fs.drop_table("FS_COURCE6_WINRATE")
 # COMMAND ----------
 
 # このセルは、Feature Storeクライアントv0.3.6で導入されたAPIを使用しています。
-# v0.3.5以下をお使いの場合は、このセルをスキップまたはコメントアウトして、コメントを解除してCmd 20を実行してください。
-
-#spark.conf.set("spark.sql.shuffle.partitions", "5")
 
 fs.create_table(
     name="FS_COURCE1_WINRATE",
     primary_keys=["RACEDATE", "PLAYERID1"],#一意キーの指定
     df=df_COURCE1_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-    description="１コースでの勝率",
+    description="全国での１コースでの勝率",
 )
+
+
+# COMMAND ----------
+
 fs.create_table(
     name="FS_COURCE2_WINRATE",
     primary_keys=["RACEDATE", "PLAYERID2"],#一意キーの指定
     df=df_COURCE2_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-    description="2コースでの勝率",
+    description="全国での2コースでの勝率",
 )
+
+
+# COMMAND ----------
+
 fs.create_table(
     name="FS_COURCE3_WINRATE",
     primary_keys=["RACEDATE", "PLAYERID3"],#一意キーの指定
     df=df_COURCE3_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-    description="3コースでの勝率",
+    description="全国での3コースでの勝率",
 )
+
+
+# COMMAND ----------
+
 fs.create_table(
     name="FS_COURCE4_WINRATE",
     primary_keys=["RACEDATE", "PLAYERID4"],#一意キーの指定
     df=df_COURCE4_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-    description="4コースでの勝率",
+    description="全国での4コースでの勝率",
 )
+
+
+# COMMAND ----------
+
 fs.create_table(
     name="FS_COURCE5_WINRATE",
     primary_keys=["RACEDATE", "PLAYERID5"],#一意キーの指定
     df=df_COURCE5_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-    description="5コースでの勝率",
+    description="全国での5コースでの勝率",
 )
+
+
+# COMMAND ----------
+
+
 fs.create_table(
     name="FS_COURCE6_WINRATE",
     primary_keys=["RACEDATE", "PLAYERID6"],#一意キーの指定
     df=df_COURCE6_WINRATE,#このデータフレームをフィーチャーストアに書き出す
-    description="6コースでの勝率",
+    description="全国での6コースでの勝率",
 )
+
+# COMMAND ----------
+
+# MAGIC %md ### トレーニング用データの作成
 
 # COMMAND ----------
 
@@ -547,14 +593,9 @@ import math
 from datetime import timedelta
 import mlflow.pyfunc
 
-
 # COMMAND ----------
 
-# MAGIC %md ### トレーニング用データの作成
-
-# COMMAND ----------
-
-# 事前に定義しているブロンズテーブルを使用
+# 事前に定義しているシルバーテーブルを使用
 silver_data = sql("select * from TRAINING_SILVER")
 
 # COMMAND ----------
@@ -645,7 +686,7 @@ cource6_features = [
 # MAGIC
 # MAGIC 1. 各フィーチャーは `FeatureLookup` の `lookup_key` に従って生の入力データと結合される。
 # MAGIC
-# MAGIC そして、`TrainingSet` は学習用の DataFrame に変換されます。この DataFrame には taxi_data のカラムと、 `FeatureLookups` で指定された特徴が含まれる。
+# MAGIC そして、`TrainingSet` は学習用の DataFrame に変換されます。
 
 # COMMAND ----------
 
@@ -718,10 +759,10 @@ training_df.createOrReplaceTempView('training_tmp1')
 
 # COMMAND ----------
 
-# DBTITLE 1,トレーニング用のベーステーブル
+# DBTITLE 1,トレーニング用の特徴量を追加したテーブル1
 # MAGIC %sql
 # MAGIC use kyotei_db;
-# MAGIC create or replace table training_base1 as
+# MAGIC create or replace table training_feature1 as
 # MAGIC select 
 # MAGIC distinct 
 # MAGIC RACEDATE -- 特徴量にはしない
@@ -742,37 +783,37 @@ training_df.createOrReplaceTempView('training_tmp1')
 # MAGIC ,CLASS5
 # MAGIC ,CLASS6
 # MAGIC
-# MAGIC --,CLUB1
-# MAGIC --,CLUB2
-# MAGIC --,CLUB3
-# MAGIC --,CLUB4
-# MAGIC --,CLUB5
-# MAGIC --,CLUB6
-# MAGIC --,AGE1
-# MAGIC --,AGE2
-# MAGIC --,AGE3
-# MAGIC --,AGE4
-# MAGIC --,AGE5
-# MAGIC --,AGE6
-# MAGIC --,WEIGHT1
-# MAGIC --,WEIGHT2
-# MAGIC --,WEIGHT3
-# MAGIC --,WEIGHT4
-# MAGIC --,WEIGHT5
-# MAGIC --,WEIGHT6
+# MAGIC ,CLUB1
+# MAGIC ,CLUB2
+# MAGIC ,CLUB3
+# MAGIC ,CLUB4
+# MAGIC ,CLUB5
+# MAGIC ,CLUB6
+# MAGIC ,AGE1
+# MAGIC ,AGE2
+# MAGIC ,AGE3
+# MAGIC ,AGE4
+# MAGIC ,AGE5
+# MAGIC ,AGE6
+# MAGIC ,WEIGHT1
+# MAGIC ,WEIGHT2
+# MAGIC ,WEIGHT3
+# MAGIC ,WEIGHT4
+# MAGIC ,WEIGHT5
+# MAGIC ,WEIGHT6
 # MAGIC
-# MAGIC --,F1
-# MAGIC --,F2
-# MAGIC --,F3
-# MAGIC --,F4
-# MAGIC --,F5
-# MAGIC --,F6
-# MAGIC --,L1
-# MAGIC --,L2
-# MAGIC --,L3
-# MAGIC --,L4
-# MAGIC --,L5
-# MAGIC --,L6
+# MAGIC ,F1
+# MAGIC ,F2
+# MAGIC ,F3
+# MAGIC ,F4
+# MAGIC ,F5
+# MAGIC ,F6
+# MAGIC ,L1
+# MAGIC ,L2
+# MAGIC ,L3
+# MAGIC ,L4
+# MAGIC ,L5
+# MAGIC ,L6
 # MAGIC
 # MAGIC ,WIN1RATE1
 # MAGIC ,WIN1RATE2
@@ -837,42 +878,35 @@ training_df.createOrReplaceTempView('training_tmp1')
 # MAGIC ,ST_AVG5
 # MAGIC ,ST_AVG6
 # MAGIC
-# MAGIC --,COURCE1_RACE_COUNT1
+# MAGIC ,COURCE1_RACE_COUNT1
 # MAGIC ,COURCE1_WIN1_RATE1
 # MAGIC ,COURCE1_WIN12_RATE1
 # MAGIC ,COURCE1_WIN123_RATE1
 # MAGIC
-# MAGIC --,COURCE2_RACE_COUNT2
+# MAGIC ,COURCE2_RACE_COUNT2
 # MAGIC ,COURCE2_WIN1_RATE2
 # MAGIC ,COURCE2_WIN12_RATE2
 # MAGIC ,COURCE2_WIN123_RATE2
 # MAGIC
-# MAGIC --,COURCE3_RACE_COUNT3
+# MAGIC ,COURCE3_RACE_COUNT3
 # MAGIC ,COURCE3_WIN1_RATE3
 # MAGIC ,COURCE3_WIN12_RATE3
 # MAGIC ,COURCE3_WIN123_RATE3
 # MAGIC
-# MAGIC --,COURCE4_RACE_COUNT4
+# MAGIC ,COURCE4_RACE_COUNT4
 # MAGIC ,COURCE4_WIN1_RATE4
 # MAGIC ,COURCE4_WIN12_RATE4
 # MAGIC ,COURCE4_WIN123_RATE4
 # MAGIC
-# MAGIC --,COURCE5_RACE_COUNT5
+# MAGIC ,COURCE5_RACE_COUNT5
 # MAGIC ,COURCE5_WIN1_RATE5
 # MAGIC ,COURCE5_WIN12_RATE5
 # MAGIC ,COURCE5_WIN123_RATE5
 # MAGIC
-# MAGIC --,COURCE6_RACE_COUNT6
+# MAGIC ,COURCE6_RACE_COUNT6
 # MAGIC ,COURCE6_WIN1_RATE6
 # MAGIC ,COURCE6_WIN12_RATE6
 # MAGIC ,COURCE6_WIN123_RATE6
-# MAGIC
-# MAGIC --,CLASS3 - CLASS4 as DIFF_CLASS_3AND4
-# MAGIC --,WIN1RATE3 - WIN1RATE4 as DIFF_WIN1RATE_3AND4
-# MAGIC --,WIN2RATE3 - WIN2RATE4 as DIFF_WIN2RATE_3AND4
-# MAGIC --,LOCALWIN1RATE3 - LOCALWIN1RATE4 as DIFF_LOCALWIN1RATE_3AND4
-# MAGIC --,LOCALWIN2RATE3 - LOCALWIN2RATE4 as DIFF_LOCALWIN2RATE_3AND4
-# MAGIC --,COURCE3_WIN123_RATE - COURCE4_WIN123_RATE as DIFF_COURCE_WIN123_RATE_3AND4
 # MAGIC
 # MAGIC ,TAN
 # MAGIC ,TANK
@@ -892,18 +926,3 @@ training_df.createOrReplaceTempView('training_tmp1')
 # MAGIC ,RENFUKU3
 # MAGIC from training_tmp1
 # MAGIC ;
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from training_base1 order by racedate desc,place,cast(race as int);
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from bangumi  order by racedate desc;
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select distinct * from result order by racedate desc;

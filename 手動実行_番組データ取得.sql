@@ -89,6 +89,9 @@
 
 -- DBTITLE 1,履歴データを格納するDB情報
 -- MAGIC %sql
+-- MAGIC %sql
+-- MAGIC use catalog main;
+-- MAGIC
 -- MAGIC CREATE DATABASE IF NOT EXISTS KYOTEI_DB;
 -- MAGIC use kyotei_db;
 
