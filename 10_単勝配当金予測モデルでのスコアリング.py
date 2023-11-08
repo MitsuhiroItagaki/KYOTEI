@@ -144,9 +144,9 @@ output_df.createOrReplaceTempView('predict_tank')
 # MAGIC   where tan <> 'NaN' 
 # MAGIC   and 
 # MAGIC   (
-# MAGIC         (predict_tan = 1 and prob1 >= 0.50)
-# MAGIC      or (predict_tan = 2 and prob2 >= 0.50)
-# MAGIC      or (predict_tan = 3 and prob3 >= 0.50)
+# MAGIC         (predict_tan = 1 and prob1 >= 0.5)
+# MAGIC      or (predict_tan = 2 and prob2 >= 0.5)
+# MAGIC      or (predict_tan = 3 and prob3 >= 0.5)
 # MAGIC      or (predict_tan = 4 and prob4 >= 0.45)
 # MAGIC      or (predict_tan = 5 and prob5 >= 0.45)
 # MAGIC      or (predict_tan = 6 and prob6 >= 0.45)

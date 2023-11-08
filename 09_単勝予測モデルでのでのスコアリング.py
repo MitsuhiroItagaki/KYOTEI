@@ -52,7 +52,107 @@ df_loaded.head(5)
 # COMMAND ----------
 
 from databricks.automl_runtime.sklearn.column_selector import ColumnSelector
-supported_cols = ["WEIGHT2", "COURCE4_LOCAL_WIN123_RATE4", "COURCE4_LOCAL_WIN1_RATE4", "WIN1RATE6", "COURCE6_LOCAL_WIN123_RATE6", "WIN1RATE1", "COURCE1_WIN1_RATE1", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "COURCE3_LOCAL_WIN1_RATE3", "COURCE4_WIN12_RATE4", "AGE4", "LOCALWIN2RATE5", "COURCE6_LOCAL_WIN12_RATE6", "WIN2RATE4", "COURCE3_LOCAL_WIN123_RATE3", "LOCALWIN2RATE6", "COURCE4_WIN123_RATE4", "MOTORWIN2RATE5", "COURCE1_WIN12_RATE1", "COURCE2_WIN1_RATE2", "WIN2RATE6", "ST_AVG3", "MOTORWIN2RATE2", "LOCALWIN1RATE2", "CLASS4", "CLASS2", "MOTORWIN2RATE1", "LOCALWIN1RATE6", "LOCALWIN1RATE3", "COURCE2_LOCAL_WIN123_RATE2", "WEIGHT5", "ST_AVG2", "LOCALWIN2RATE2", "WIN2RATE2", "AGE5", "PLAYERID4", "ST_AVG5", "AGE2", "PLAYERID5", "COURCE3_LOCAL_WIN12_RATE3", "WIN2RATE5", "COURCE2_WIN12_RATE2", "COURCE5_WIN123_RATE5", "COURCE6_WIN12_RATE6", "ST_AVG1", "COURCE5_LOCAL_WIN1_RATE5", "AGE3", "PLAYERID6", "COURCE6_WIN1_RATE6", "COURCE5_WIN1_RATE5", "AGE1", "COURCE5_WIN12_RATE5", "WIN1RATE3", "WIN1RATE5", "WEIGHT6", "WIN2RATE1", "WIN1RATE2", "ST_AVG4", "WEIGHT4", "COURCE2_WIN123_RATE2", "CLASS1", "LOCALWIN1RATE4", "CLASS6", "ST_AVG6", "COURCE1_LOCAL_WIN123_RATE1", "COURCE3_WIN12_RATE3", "LOCALWIN2RATE3", "COURCE1_WIN123_RATE1", "LOCALWIN2RATE4", "MOTORWIN2RATE6", "MOTORWIN2RATE3", "COURCE6_LOCAL_WIN1_RATE6", "WIN2RATE3", "LOCALWIN1RATE5", "CLASS3", "WEIGHT1", "LOCALWIN1RATE1", "WIN1RATE4", "COURCE1_LOCAL_WIN12_RATE1", "PLAYERID2", "RACEDATE", "MOTORWIN2RATE4", "COURCE4_LOCAL_WIN12_RATE4", "COURCE6_WIN123_RATE6", "COURCE2_LOCAL_WIN1_RATE2", "PLACE", "COURCE2_LOCAL_WIN12_RATE2", "COURCE3_WIN123_RATE3", "WEIGHT3", "COURCE1_LOCAL_WIN1_RATE1", "AGE6", "COURCE3_WIN1_RATE3", "CLASS5", "COURCE4_WIN1_RATE4", "PLAYERID1", "PLAYERID3", "LOCALWIN2RATE1"]
+
+supported_cols = [
+    "WEIGHT2",
+    "COURCE4_LOCAL_WIN123_RATE4",
+    "COURCE4_LOCAL_WIN1_RATE4",
+    "WIN1RATE6",
+    "COURCE6_LOCAL_WIN123_RATE6",
+    "WIN1RATE1",
+    "COURCE1_WIN1_RATE1",
+    "COURCE5_LOCAL_WIN123_RATE5",
+    "COURCE5_LOCAL_WIN12_RATE5",
+    "COURCE3_LOCAL_WIN1_RATE3",
+    "COURCE4_WIN12_RATE4",
+    "AGE4",
+    "LOCALWIN2RATE5",
+    "COURCE6_LOCAL_WIN12_RATE6",
+    "WIN2RATE4",
+    "COURCE3_LOCAL_WIN123_RATE3",
+    "LOCALWIN2RATE6",
+    "COURCE4_WIN123_RATE4",
+    "MOTORWIN2RATE5",
+    "COURCE1_WIN12_RATE1",
+    "COURCE2_WIN1_RATE2",
+    "WIN2RATE6",
+    "ST_AVG3",
+    "MOTORWIN2RATE2",
+    "LOCALWIN1RATE2",
+    "CLASS4",
+    "CLASS2",
+    "MOTORWIN2RATE1",
+    "LOCALWIN1RATE6",
+    "LOCALWIN1RATE3",
+    "COURCE2_LOCAL_WIN123_RATE2",
+    "WEIGHT5",
+    "ST_AVG2",
+    "LOCALWIN2RATE2",
+    "WIN2RATE2",
+    "AGE5",
+    "PLAYERID4",
+    "ST_AVG5",
+    "AGE2",
+    "PLAYERID5",
+    "COURCE3_LOCAL_WIN12_RATE3",
+    "WIN2RATE5",
+    "COURCE2_WIN12_RATE2",
+    "COURCE5_WIN123_RATE5",
+    "COURCE6_WIN12_RATE6",
+    "ST_AVG1",
+    "COURCE5_LOCAL_WIN1_RATE5",
+    "AGE3",
+    "PLAYERID6",
+    "COURCE6_WIN1_RATE6",
+    "COURCE5_WIN1_RATE5",
+    "AGE1",
+    "COURCE5_WIN12_RATE5",
+    "WIN1RATE3",
+    "WIN1RATE5",
+    "WEIGHT6",
+    "WIN2RATE1",
+    "WIN1RATE2",
+    "ST_AVG4",
+    "WEIGHT4",
+    "COURCE2_WIN123_RATE2",
+    "CLASS1",
+    "LOCALWIN1RATE4",
+    "CLASS6",
+    "ST_AVG6",
+    "COURCE1_LOCAL_WIN123_RATE1",
+    "COURCE3_WIN12_RATE3",
+    "LOCALWIN2RATE3",
+    "COURCE1_WIN123_RATE1",
+    "LOCALWIN2RATE4",
+    "MOTORWIN2RATE6",
+    "MOTORWIN2RATE3",
+    "COURCE6_LOCAL_WIN1_RATE6",
+    "WIN2RATE3",
+    "LOCALWIN1RATE5",
+    "CLASS3",
+    "WEIGHT1",
+    "LOCALWIN1RATE1",
+    "WIN1RATE4",
+    "COURCE1_LOCAL_WIN12_RATE1",
+    "PLAYERID2",
+    "RACEDATE",
+    "MOTORWIN2RATE4",
+    "COURCE4_LOCAL_WIN12_RATE4",
+    "COURCE6_WIN123_RATE6",
+    "COURCE2_LOCAL_WIN1_RATE2",
+    "PLACE",
+    "COURCE2_LOCAL_WIN12_RATE2",
+    "COURCE3_WIN123_RATE3",
+    "WEIGHT3",
+    "COURCE1_LOCAL_WIN1_RATE1",
+    "AGE6",
+    "COURCE3_WIN1_RATE3",
+    "CLASS5",
+    "COURCE4_WIN1_RATE4",
+    "PLAYERID1",
+    "PLAYERID3",
+    "LOCALWIN2RATE1",
+]
 col_selector = ColumnSelector(supported_cols)
 
 # COMMAND ----------
@@ -122,15 +222,214 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 num_imputers = []
-num_imputers.append(("impute_mean", SimpleImputer(), ["AGE1", "AGE2", "AGE3", "AGE4", "AGE5", "AGE6", "CLASS1", "CLASS2", "CLASS3", "CLASS4", "CLASS5", "CLASS6", "COURCE1_LOCAL_WIN123_RATE1", "COURCE1_LOCAL_WIN12_RATE1", "COURCE1_LOCAL_WIN1_RATE1", "COURCE1_WIN123_RATE1", "COURCE1_WIN12_RATE1", "COURCE1_WIN1_RATE1", "COURCE2_LOCAL_WIN123_RATE2", "COURCE2_LOCAL_WIN12_RATE2", "COURCE2_LOCAL_WIN1_RATE2", "COURCE2_WIN123_RATE2", "COURCE2_WIN12_RATE2", "COURCE2_WIN1_RATE2", "COURCE3_LOCAL_WIN123_RATE3", "COURCE3_LOCAL_WIN12_RATE3", "COURCE3_LOCAL_WIN1_RATE3", "COURCE3_WIN123_RATE3", "COURCE3_WIN12_RATE3", "COURCE3_WIN1_RATE3", "COURCE4_LOCAL_WIN123_RATE4", "COURCE4_LOCAL_WIN12_RATE4", "COURCE4_LOCAL_WIN1_RATE4", "COURCE4_WIN123_RATE4", "COURCE4_WIN12_RATE4", "COURCE4_WIN1_RATE4", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "COURCE5_LOCAL_WIN1_RATE5", "COURCE5_WIN123_RATE5", "COURCE5_WIN12_RATE5", "COURCE5_WIN1_RATE5", "COURCE6_LOCAL_WIN123_RATE6", "COURCE6_LOCAL_WIN12_RATE6", "COURCE6_LOCAL_WIN1_RATE6", "COURCE6_WIN123_RATE6", "COURCE6_WIN12_RATE6", "COURCE6_WIN1_RATE6", "LOCALWIN1RATE1", "LOCALWIN1RATE2", "LOCALWIN1RATE3", "LOCALWIN1RATE4", "LOCALWIN1RATE5", "LOCALWIN1RATE6", "LOCALWIN2RATE1", "LOCALWIN2RATE2", "LOCALWIN2RATE3", "LOCALWIN2RATE4", "LOCALWIN2RATE5", "LOCALWIN2RATE6", "MOTORWIN2RATE1", "MOTORWIN2RATE2", "MOTORWIN2RATE3", "MOTORWIN2RATE4", "MOTORWIN2RATE5", "MOTORWIN2RATE6", "ST_AVG1", "ST_AVG2", "ST_AVG3", "ST_AVG4", "ST_AVG5", "ST_AVG6", "WEIGHT1", "WEIGHT2", "WEIGHT3", "WEIGHT4", "WEIGHT5", "WEIGHT6", "WIN1RATE1", "WIN1RATE2", "WIN1RATE3", "WIN1RATE4", "WIN1RATE5", "WIN1RATE6", "WIN2RATE1", "WIN2RATE2", "WIN2RATE3", "WIN2RATE4", "WIN2RATE5", "WIN2RATE6"]))
+num_imputers.append(
+    (
+        "impute_mean",
+        SimpleImputer(),
+        [
+            "AGE1",
+            "AGE2",
+            "AGE3",
+            "AGE4",
+            "AGE5",
+            "AGE6",
+            "CLASS1",
+            "CLASS2",
+            "CLASS3",
+            "CLASS4",
+            "CLASS5",
+            "CLASS6",
+            "COURCE1_LOCAL_WIN123_RATE1",
+            "COURCE1_LOCAL_WIN12_RATE1",
+            "COURCE1_LOCAL_WIN1_RATE1",
+            "COURCE1_WIN123_RATE1",
+            "COURCE1_WIN12_RATE1",
+            "COURCE1_WIN1_RATE1",
+            "COURCE2_LOCAL_WIN123_RATE2",
+            "COURCE2_LOCAL_WIN12_RATE2",
+            "COURCE2_LOCAL_WIN1_RATE2",
+            "COURCE2_WIN123_RATE2",
+            "COURCE2_WIN12_RATE2",
+            "COURCE2_WIN1_RATE2",
+            "COURCE3_LOCAL_WIN123_RATE3",
+            "COURCE3_LOCAL_WIN12_RATE3",
+            "COURCE3_LOCAL_WIN1_RATE3",
+            "COURCE3_WIN123_RATE3",
+            "COURCE3_WIN12_RATE3",
+            "COURCE3_WIN1_RATE3",
+            "COURCE4_LOCAL_WIN123_RATE4",
+            "COURCE4_LOCAL_WIN12_RATE4",
+            "COURCE4_LOCAL_WIN1_RATE4",
+            "COURCE4_WIN123_RATE4",
+            "COURCE4_WIN12_RATE4",
+            "COURCE4_WIN1_RATE4",
+            "COURCE5_LOCAL_WIN123_RATE5",
+            "COURCE5_LOCAL_WIN12_RATE5",
+            "COURCE5_LOCAL_WIN1_RATE5",
+            "COURCE5_WIN123_RATE5",
+            "COURCE5_WIN12_RATE5",
+            "COURCE5_WIN1_RATE5",
+            "COURCE6_LOCAL_WIN123_RATE6",
+            "COURCE6_LOCAL_WIN12_RATE6",
+            "COURCE6_LOCAL_WIN1_RATE6",
+            "COURCE6_WIN123_RATE6",
+            "COURCE6_WIN12_RATE6",
+            "COURCE6_WIN1_RATE6",
+            "LOCALWIN1RATE1",
+            "LOCALWIN1RATE2",
+            "LOCALWIN1RATE3",
+            "LOCALWIN1RATE4",
+            "LOCALWIN1RATE5",
+            "LOCALWIN1RATE6",
+            "LOCALWIN2RATE1",
+            "LOCALWIN2RATE2",
+            "LOCALWIN2RATE3",
+            "LOCALWIN2RATE4",
+            "LOCALWIN2RATE5",
+            "LOCALWIN2RATE6",
+            "MOTORWIN2RATE1",
+            "MOTORWIN2RATE2",
+            "MOTORWIN2RATE3",
+            "MOTORWIN2RATE4",
+            "MOTORWIN2RATE5",
+            "MOTORWIN2RATE6",
+            "ST_AVG1",
+            "ST_AVG2",
+            "ST_AVG3",
+            "ST_AVG4",
+            "ST_AVG5",
+            "ST_AVG6",
+            "WEIGHT1",
+            "WEIGHT2",
+            "WEIGHT3",
+            "WEIGHT4",
+            "WEIGHT5",
+            "WEIGHT6",
+            "WIN1RATE1",
+            "WIN1RATE2",
+            "WIN1RATE3",
+            "WIN1RATE4",
+            "WIN1RATE5",
+            "WIN1RATE6",
+            "WIN2RATE1",
+            "WIN2RATE2",
+            "WIN2RATE3",
+            "WIN2RATE4",
+            "WIN2RATE5",
+            "WIN2RATE6",
+        ],
+    )
+)
 
-numerical_pipeline = Pipeline(steps=[
-    ("converter", FunctionTransformer(lambda df: df.apply(pd.to_numeric, errors='coerce'))),
-    ("imputers", ColumnTransformer(num_imputers)),
-    ("standardizer", StandardScaler()),
-])
+numerical_pipeline = Pipeline(
+    steps=[
+        (
+            "converter",
+            FunctionTransformer(lambda df: df.apply(pd.to_numeric, errors="coerce")),
+        ),
+        ("imputers", ColumnTransformer(num_imputers)),
+        ("standardizer", StandardScaler()),
+    ]
+)
 
-numerical_transformers = [("numerical", numerical_pipeline, ["WEIGHT2", "COURCE4_LOCAL_WIN123_RATE4", "COURCE4_LOCAL_WIN1_RATE4", "WIN1RATE6", "COURCE6_LOCAL_WIN123_RATE6", "WIN1RATE1", "COURCE1_WIN1_RATE1", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "COURCE3_LOCAL_WIN1_RATE3", "COURCE4_WIN12_RATE4", "AGE4", "LOCALWIN2RATE5", "COURCE6_LOCAL_WIN12_RATE6", "WIN2RATE4", "COURCE3_LOCAL_WIN123_RATE3", "LOCALWIN2RATE6", "COURCE4_WIN123_RATE4", "MOTORWIN2RATE5", "COURCE1_WIN12_RATE1", "COURCE2_WIN1_RATE2", "WIN2RATE6", "ST_AVG3", "MOTORWIN2RATE2", "LOCALWIN1RATE2", "CLASS4", "CLASS2", "MOTORWIN2RATE1", "LOCALWIN1RATE6", "LOCALWIN1RATE3", "COURCE2_LOCAL_WIN123_RATE2", "WEIGHT5", "ST_AVG2", "LOCALWIN2RATE2", "WIN2RATE2", "AGE5", "ST_AVG5", "AGE2", "COURCE3_LOCAL_WIN12_RATE3", "WIN2RATE5", "COURCE2_WIN12_RATE2", "COURCE5_WIN123_RATE5", "COURCE6_WIN12_RATE6", "ST_AVG1", "COURCE5_LOCAL_WIN1_RATE5", "AGE3", "COURCE6_WIN1_RATE6", "COURCE5_WIN1_RATE5", "AGE1", "COURCE5_WIN12_RATE5", "WIN1RATE3", "WIN1RATE5", "WEIGHT6", "WIN2RATE1", "WIN1RATE2", "ST_AVG4", "WEIGHT4", "COURCE2_WIN123_RATE2", "CLASS1", "LOCALWIN1RATE4", "CLASS6", "ST_AVG6", "COURCE1_LOCAL_WIN123_RATE1", "COURCE3_WIN12_RATE3", "LOCALWIN2RATE3", "COURCE1_WIN123_RATE1", "LOCALWIN2RATE4", "MOTORWIN2RATE6", "MOTORWIN2RATE3", "COURCE6_LOCAL_WIN1_RATE6", "WIN2RATE3", "LOCALWIN1RATE5", "CLASS3", "WEIGHT1", "LOCALWIN1RATE1", "WIN1RATE4", "COURCE1_LOCAL_WIN12_RATE1", "MOTORWIN2RATE4", "COURCE4_LOCAL_WIN12_RATE4", "COURCE6_WIN123_RATE6", "COURCE2_LOCAL_WIN1_RATE2", "COURCE2_LOCAL_WIN12_RATE2", "COURCE3_WIN123_RATE3", "WEIGHT3", "COURCE1_LOCAL_WIN1_RATE1", "AGE6", "COURCE3_WIN1_RATE3", "CLASS5", "COURCE4_WIN1_RATE4", "LOCALWIN2RATE1"])]
+numerical_transformers = [
+    (
+        "numerical",
+        numerical_pipeline,
+        [
+            "WEIGHT2",
+            "COURCE4_LOCAL_WIN123_RATE4",
+            "COURCE4_LOCAL_WIN1_RATE4",
+            "WIN1RATE6",
+            "COURCE6_LOCAL_WIN123_RATE6",
+            "WIN1RATE1",
+            "COURCE1_WIN1_RATE1",
+            "COURCE5_LOCAL_WIN123_RATE5",
+            "COURCE5_LOCAL_WIN12_RATE5",
+            "COURCE3_LOCAL_WIN1_RATE3",
+            "COURCE4_WIN12_RATE4",
+            "AGE4",
+            "LOCALWIN2RATE5",
+            "COURCE6_LOCAL_WIN12_RATE6",
+            "WIN2RATE4",
+            "COURCE3_LOCAL_WIN123_RATE3",
+            "LOCALWIN2RATE6",
+            "COURCE4_WIN123_RATE4",
+            "MOTORWIN2RATE5",
+            "COURCE1_WIN12_RATE1",
+            "COURCE2_WIN1_RATE2",
+            "WIN2RATE6",
+            "ST_AVG3",
+            "MOTORWIN2RATE2",
+            "LOCALWIN1RATE2",
+            "CLASS4",
+            "CLASS2",
+            "MOTORWIN2RATE1",
+            "LOCALWIN1RATE6",
+            "LOCALWIN1RATE3",
+            "COURCE2_LOCAL_WIN123_RATE2",
+            "WEIGHT5",
+            "ST_AVG2",
+            "LOCALWIN2RATE2",
+            "WIN2RATE2",
+            "AGE5",
+            "ST_AVG5",
+            "AGE2",
+            "COURCE3_LOCAL_WIN12_RATE3",
+            "WIN2RATE5",
+            "COURCE2_WIN12_RATE2",
+            "COURCE5_WIN123_RATE5",
+            "COURCE6_WIN12_RATE6",
+            "ST_AVG1",
+            "COURCE5_LOCAL_WIN1_RATE5",
+            "AGE3",
+            "COURCE6_WIN1_RATE6",
+            "COURCE5_WIN1_RATE5",
+            "AGE1",
+            "COURCE5_WIN12_RATE5",
+            "WIN1RATE3",
+            "WIN1RATE5",
+            "WEIGHT6",
+            "WIN2RATE1",
+            "WIN1RATE2",
+            "ST_AVG4",
+            "WEIGHT4",
+            "COURCE2_WIN123_RATE2",
+            "CLASS1",
+            "LOCALWIN1RATE4",
+            "CLASS6",
+            "ST_AVG6",
+            "COURCE1_LOCAL_WIN123_RATE1",
+            "COURCE3_WIN12_RATE3",
+            "LOCALWIN2RATE3",
+            "COURCE1_WIN123_RATE1",
+            "LOCALWIN2RATE4",
+            "MOTORWIN2RATE6",
+            "MOTORWIN2RATE3",
+            "COURCE6_LOCAL_WIN1_RATE6",
+            "WIN2RATE3",
+            "LOCALWIN1RATE5",
+            "CLASS3",
+            "WEIGHT1",
+            "LOCALWIN1RATE1",
+            "WIN1RATE4",
+            "COURCE1_LOCAL_WIN12_RATE1",
+            "MOTORWIN2RATE4",
+            "COURCE4_LOCAL_WIN12_RATE4",
+            "COURCE6_WIN123_RATE6",
+            "COURCE2_LOCAL_WIN1_RATE2",
+            "COURCE2_LOCAL_WIN12_RATE2",
+            "COURCE3_WIN123_RATE3",
+            "WEIGHT3",
+            "COURCE1_LOCAL_WIN1_RATE1",
+            "AGE6",
+            "COURCE3_WIN1_RATE3",
+            "CLASS5",
+            "COURCE4_WIN1_RATE4",
+            "LOCALWIN2RATE1",
+        ],
+    )
+]
 
 # COMMAND ----------
 
@@ -180,7 +479,9 @@ imputers = {
 categorical_hash_transformers = []
 
 for col in ["PLAYERID1", "PLAYERID2", "PLAYERID3", "PLAYERID4", "PLAYERID5", "PLAYERID6"]:
+    #hasher = FeatureHasher(n_features=512, input_type="string")
     hasher = FeatureHasher(n_features=1024, input_type="string")
+    #hasher = FeatureHasher(n_features=2048, input_type="string")
     if col in imputers:
         imputer_name, imputer = imputers[col]
     else:
@@ -376,36 +677,19 @@ def objective(params):
 
 # COMMAND ----------
 
-# space = {
-#   "colsample_bytree": 0.5443819159400324,
-#   "lambda_l1": 0.11058632049278405,
-#   "lambda_l2": 5.09284287697047,
-#   "learning_rate": 0.033851071257386,
-#   "max_bin": 32,
-#   "max_depth": 3,
-#   "min_child_samples": 137,
-#   "n_estimators": 542,
-#   "num_leaves": 195,
-#   "path_smooth": 86.91538129015836,
-#   "subsample": 0.7147236871875938,
-#   "random_state": 985676157,
-# }
-
-# COMMAND ----------
-
 space = {
-  "colsample_bytree": 0.4671981149486131,
-  "lambda_l1": 0.3109493265632623,
-  "lambda_l2": 0.4964254587729136,
-  "learning_rate": 0.03333356639193539,
-  "max_bin": 297,
+  "colsample_bytree": 0.5443819159400324,
+  "lambda_l1": 0.11058632049278405,
+  "lambda_l2": 5.09284287697047,
+  "learning_rate": 0.033851071257386,
+  "max_bin": 32,
   "max_depth": 3,
-  "min_child_samples": 284,
-  "n_estimators": 1308,
-  "num_leaves": 17,
-  "path_smooth": 56.64475213962636,
-  "subsample": 0.5500994723395024,
-  "random_state": 847474640,
+  "min_child_samples": 137,
+  "n_estimators": 542,
+  "num_leaves": 195,
+  "path_smooth": 86.91538129015836,
+  "subsample": 0.7147236871875938,
+  "random_state": 985676157,
 }
 
 # COMMAND ----------
@@ -499,7 +783,7 @@ shutil.rmtree(tmp_dir)
 # COMMAND ----------
 
 ################################################
-# pyfuncで再度登録してpredict_probaを登録することにする。
+# 1.pyfuncで再度登録してpredict_probaを登録することにする。
 ################################################
 import functools
 
@@ -533,7 +817,7 @@ class model(mlflow.pyfunc.PythonModel):
     return pdf
   
 ###################
-# ベストモデルを登録
+# 2.ベストモデルを登録
 ###################
 with mlflow.start_run() as model_run:  
   #MLflowトラッキングサーバーに記録
@@ -542,19 +826,19 @@ with mlflow.start_run() as model_run:
 # model_uri for the generated model
 print("model_uri for the generated model:",f"runs:/{ model_run.info.run_id }/model")
 
-# COMMAND ----------
-
+###########################
+# 3.モデルを登録のIDでモデルをロード
+###########################
 import mlflow
-#モデルを登録のIDでモデルをロード
 print(f"runs:/{ model_run.info.run_id }/model")
 logged_model = f"runs:/{ model_run.info.run_id }/model"
 
 # Load model as a PyFuncModel.
 loaded_model = mlflow.pyfunc.load_model(logged_model)
 
-# COMMAND ----------
-
-# Python関数としてコールするので予測対象データはPandasデータフレームに変換して渡します。
+#######################################################################
+# 4.Python関数としてコールするので予測対象データはPandasデータフレームに変換して渡します。
+#######################################################################
 input_table_name = "main.kyotei_db.model_predict"
 
 # load table as a Spark DataFrame
@@ -563,9 +847,9 @@ table = spark.table(input_table_name)
 # データロード
 df1 = table.toPandas()
 
-# COMMAND ----------
-
-# 確率を含む予測結果の取得
+#########################
+# 5.確率を含む予測結果の取得
+#########################
 proba = loaded_model.predict(df1)
 # display(proba)
 
