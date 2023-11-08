@@ -910,6 +910,10 @@ training_df.createOrReplaceTempView('training_tmp1')
 # MAGIC
 # MAGIC ,TAN
 # MAGIC ,TANK
+# MAGIC ,FUKU1
+# MAGIC ,FUKU1K
+# MAGIC ,FUKU2
+# MAGIC ,FUKU2K
 # MAGIC ,WIDE1
 # MAGIC ,WIDE1K
 # MAGIC ,WIDE2
@@ -926,3 +930,40 @@ training_df.createOrReplaceTempView('training_tmp1')
 # MAGIC ,RENFUKU3
 # MAGIC from training_tmp1
 # MAGIC ;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE1_RACE_COUNT1 COMMENT "１号艇レーサーの全国での１号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE1_WIN1_RATE1 COMMENT "１号艇レーサーの全国での１号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE1_WIN12_RATE1 COMMENT "１号艇レーサーの全国での１号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE1_WIN123_RATE1 COMMENT "１号艇レーサーの全国での１号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE2_RACE_COUNT2 COMMENT "２号艇レーサーの全国での２号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE2_WIN1_RATE2 COMMENT "２号艇レーサーの全国での２号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE2_WIN12_RATE2 COMMENT "２号艇レーサーの全国での２号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE2_WIN123_RATE2 COMMENT "２号艇レーサーの全国での２号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE3_RACE_COUNT3 COMMENT "３号艇レーサーの全国での３号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE3_WIN1_RATE3 COMMENT "３号艇レーサーの全国での３号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE3_WIN12_RATE3 COMMENT "３号艇レーサーの全国での３号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE3_WIN123_RATE3 COMMENT "３号艇レーサーの全国での３号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE4_RACE_COUNT4 COMMENT "４号艇レーサーの全国での６号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE4_WIN1_RATE4 COMMENT "４号艇レーサーの全国での６号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE4_WIN12_RATE4 COMMENT "４号艇レーサーの全国での６号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE4_WIN123_RATE4 COMMENT "６号艇レーサーの全国での６号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE5_RACE_COUNT5 COMMENT "５号艇レーサーの全国での６号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE5_WIN1_RATE5 COMMENT "５号艇レーサーの全国でのvでの１着勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE5_WIN12_RATE5 COMMENT "５号艇レーサーの全国での６号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE5_WIN123_RATE5 COMMENT "６号艇レーサーの全国での６号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE6_RACE_COUNT6 COMMENT "６号艇レーサーの全国での６号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE6_WIN1_RATE6 COMMENT "６号艇レーサーの全国での６号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE6_WIN12_RATE6 COMMENT "６号艇レーサーの全国での６号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature1 ALTER COLUMN COURCE6_WIN123_RATE6 COMMENT "６号艇レーサーの全国でのコ６号艇での３着以内勝率";
+
+# COMMAND ----------
+
+

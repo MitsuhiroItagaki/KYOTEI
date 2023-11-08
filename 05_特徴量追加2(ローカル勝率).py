@@ -1009,6 +1009,10 @@ print("Creation timestamp: {}".format(experiment.creation_time))
 # MAGIC
 # MAGIC ,TAN
 # MAGIC ,TANK
+# MAGIC ,FUKU1
+# MAGIC ,FUKU1K
+# MAGIC ,FUKU2
+# MAGIC ,FUKU2K
 # MAGIC ,WIDE1
 # MAGIC ,WIDE1K
 # MAGIC ,WIDE2
@@ -1025,3 +1029,36 @@ print("Creation timestamp: {}".format(experiment.creation_time))
 # MAGIC ,RENFUKU3
 # MAGIC from training_tmp2
 # MAGIC ;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE1_LOCAL_RACE_COUNT1 COMMENT "１号艇レーサーの開催地レース場での１号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE1_LOCAL_WIN1_RATE1 COMMENT "１号艇レーサーの開催地レース場での１号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE1_LOCAL_WIN12_RATE1 COMMENT "１号艇レーサーの開催地レース場での１号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE1_LOCAL_WIN123_RATE1 COMMENT "１号艇レーサーの開催地レース場での１号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE2_LOCAL_RACE_COUNT2 COMMENT "２号艇レーサーの開催地レース場での２号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE2_LOCAL_WIN1_RATE2 COMMENT "２号艇レーサーの開催地レース場での２号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE2_LOCAL_WIN12_RATE2 COMMENT "２号艇レーサーの開催地レース場での２号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE2_LOCAL_WIN123_RATE2 COMMENT "２号艇レーサーの開催地レース場での２号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE3_LOCAL_RACE_COUNT3 COMMENT "３号艇レーサーの開催地レース場での３号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE3_LOCAL_WIN1_RATE3 COMMENT "３号艇レーサーの開催地レース場での３号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE3_LOCAL_WIN12_RATE3 COMMENT "３号艇レーサーの開催地レース場での３号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE3_LOCAL_WIN123_RATE3 COMMENT "３号艇レーサーの開催地レース場での３号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE4_LOCAL_RACE_COUNT4 COMMENT "４号艇レーサーの開催地レース場での4号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE4_LOCAL_WIN1_RATE4 COMMENT "４号艇レーサーの開催地レース場での4号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE4_LOCAL_WIN12_RATE4 COMMENT "４号艇レーサーの開催地レース場での4号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE4_LOCAL_WIN123_RATE4 COMMENT "６号艇レーサーの開催地レース場での4号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE5_LOCAL_RACE_COUNT5 COMMENT "５号艇レーサーの開催地レース場での5号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE5_LOCAL_WIN1_RATE5 COMMENT "５号艇レーサーの開催地レース場での5号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE5_LOCAL_WIN12_RATE5 COMMENT "５号艇レーサーの開催地レース場での5号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE5_LOCAL_WIN123_RATE5 COMMENT "６号艇レーサーの開催地レース場での5号艇での３着以内勝率";
+# MAGIC
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE6_LOCAL_RACE_COUNT6 COMMENT "６号艇レーサーの開催地レース場での5号艇でのレース回数";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE6_LOCAL_WIN1_RATE6 COMMENT "６号艇レーサーの開催地レース場での5号艇での１着勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE6_LOCAL_WIN12_RATE6 COMMENT "６号艇レーサーの開催地レース場での5号艇での２着以内勝率";
+# MAGIC ALTER TABLE training_feature2 ALTER COLUMN COURCE6_LOCAL_WIN123_RATE6 COMMENT "６号艇レーサーの開催地レース場での5号艇での３着以内勝率";

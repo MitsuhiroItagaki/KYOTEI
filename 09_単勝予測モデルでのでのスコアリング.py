@@ -3,7 +3,7 @@
 # MAGIC # LightGBM Classifier training
 # MAGIC - This is an auto-generated notebook.
 # MAGIC - To reproduce these results, attach this notebook to a cluster with runtime version **14.1.x-cpu-ml-scala2.12**, and rerun it.
-# MAGIC - Compare trials in the [MLflow experiment](#mlflow/experiments/3031282363653284).
+# MAGIC - Compare trials in the [MLflow experiment](#mlflow/experiments/3031282363662614).
 # MAGIC - Clone this notebook into your project folder by selecting **File > Clone** in the notebook toolbar.
 
 # COMMAND ----------
@@ -11,7 +11,7 @@
 import mlflow
 import databricks.automl_runtime
 
-target_col = "BUY"
+target_col = "TAN"
 time_col = "RACEDATE"
 
 # COMMAND ----------
@@ -33,7 +33,7 @@ os.makedirs(input_temp_dir)
 
 
 # Download the artifact and read it into a pandas DataFrame
-input_data_path = mlflow.artifacts.download_artifacts(run_id="d8c25de73dfe4ab0af4b341ed4d3c69c", artifact_path="data", dst_path=input_temp_dir)
+input_data_path = mlflow.artifacts.download_artifacts(run_id="886f0154e08440ca878a627619dbbed5", artifact_path="data", dst_path=input_temp_dir)
 
 df_loaded = pd.read_parquet(os.path.join(input_data_path, "training_data"))
 # Delete the temp data
@@ -52,7 +52,7 @@ df_loaded.head(5)
 # COMMAND ----------
 
 from databricks.automl_runtime.sklearn.column_selector import ColumnSelector
-supported_cols = ["COURCE6_RACE_COUNT6", "L4", "WEIGHT2", "F4", "COURCE4_LOCAL_WIN123_RATE4", "COURCE1_LOCAL_RACE_COUNT1", "COURCE4_LOCAL_WIN1_RATE4", "WIN1RATE6", "COURCE6_LOCAL_WIN123_RATE6", "CLUB5", "WIN1RATE1", "COURCE1_WIN1_RATE1", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "BOATWIN2RATE1", "COURCE3_LOCAL_WIN1_RATE3", "COURCE4_WIN12_RATE4", "AGE4", "LOCALWIN2RATE5", "CLUB4", "COURCE6_LOCAL_WIN12_RATE6", "BOATWIN2RATE4", "WIN2RATE4", "COURCE5_LOCAL_RACE_COUNT5", "COURCE3_LOCAL_WIN123_RATE3", "LOCALWIN2RATE6", "COURCE4_WIN123_RATE4", "MOTORWIN2RATE5", "COURCE3_RACE_COUNT3", "BOATWIN2RATE3", "COURCE1_WIN12_RATE1", "COURCE2_WIN1_RATE2", "F5", "WIN2RATE6", "COURCE6_LOCAL_RACE_COUNT6", "ST_AVG3", "L1", "MOTORWIN2RATE2", "BOATWIN2RATE5", "LOCALWIN1RATE2", "CLASS4", "CLASS2", "MOTORWIN2RATE1", "LOCALWIN1RATE6", "LOCALWIN1RATE3", "COURCE2_LOCAL_WIN123_RATE2", "F3", "WEIGHT5", "ST_AVG2", "LOCALWIN2RATE2", "L5", "WIN2RATE2", "AGE5", "ST_AVG5", "AGE2", "BOATWIN2RATE6", "COURCE3_LOCAL_RACE_COUNT3", "COURCE4_LOCAL_RACE_COUNT4", "COURCE3_LOCAL_WIN12_RATE3", "WIN2RATE5", "COURCE2_WIN12_RATE2", "COURCE5_WIN123_RATE5", "COURCE6_WIN12_RATE6", "ST_AVG1", "COURCE5_LOCAL_WIN1_RATE5", "AGE3", "COURCE6_WIN1_RATE6", "COURCE5_WIN1_RATE5", "COURCE2_RACE_COUNT2", "AGE1", "COURCE5_WIN12_RATE5", "WIN1RATE3", "WIN1RATE5", "COURCE1_RACE_COUNT1", "CLUB2", "WEIGHT6", "WIN2RATE1", "F1", "WIN1RATE2", "ST_AVG4", "BOATWIN2RATE2", "WEIGHT4", "COURCE2_WIN123_RATE2", "CLASS1", "LOCALWIN1RATE4", "CLASS6", "COURCE5_RACE_COUNT5", "L6", "ST_AVG6", "COURCE1_LOCAL_WIN123_RATE1", "COURCE3_WIN12_RATE3", "L3", "LOCALWIN2RATE3", "COURCE1_WIN123_RATE1", "LOCALWIN2RATE4", "MOTORWIN2RATE6", "MOTORWIN2RATE3", "L2", "CLUB3", "COURCE6_LOCAL_WIN1_RATE6", "WIN2RATE3", "LOCALWIN1RATE5", "RACE", "CLASS3", "F2", "WEIGHT1", "LOCALWIN1RATE1", "WIN1RATE4", "COURCE1_LOCAL_WIN12_RATE1", "COURCE2_LOCAL_RACE_COUNT2", "RACEDATE", "MOTORWIN2RATE4", "COURCE4_LOCAL_WIN12_RATE4", "CLUB6", "COURCE6_WIN123_RATE6", "COURCE2_LOCAL_WIN1_RATE2", "PLACE", "COURCE2_LOCAL_WIN12_RATE2", "COURCE3_WIN123_RATE3", "COURCE4_RACE_COUNT4", "WEIGHT3", "COURCE1_LOCAL_WIN1_RATE1", "AGE6", "F6", "CLASS5", "COURCE3_WIN1_RATE3", "COURCE4_WIN1_RATE4", "LOCALWIN2RATE1", "CLUB1"]
+supported_cols = ["WEIGHT2", "COURCE4_LOCAL_WIN123_RATE4", "COURCE4_LOCAL_WIN1_RATE4", "WIN1RATE6", "COURCE6_LOCAL_WIN123_RATE6", "WIN1RATE1", "COURCE1_WIN1_RATE1", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "COURCE3_LOCAL_WIN1_RATE3", "COURCE4_WIN12_RATE4", "AGE4", "LOCALWIN2RATE5", "COURCE6_LOCAL_WIN12_RATE6", "WIN2RATE4", "COURCE3_LOCAL_WIN123_RATE3", "LOCALWIN2RATE6", "COURCE4_WIN123_RATE4", "MOTORWIN2RATE5", "COURCE1_WIN12_RATE1", "COURCE2_WIN1_RATE2", "WIN2RATE6", "ST_AVG3", "MOTORWIN2RATE2", "LOCALWIN1RATE2", "CLASS4", "CLASS2", "MOTORWIN2RATE1", "LOCALWIN1RATE6", "LOCALWIN1RATE3", "COURCE2_LOCAL_WIN123_RATE2", "WEIGHT5", "ST_AVG2", "LOCALWIN2RATE2", "WIN2RATE2", "AGE5", "PLAYERID4", "ST_AVG5", "AGE2", "PLAYERID5", "COURCE3_LOCAL_WIN12_RATE3", "WIN2RATE5", "COURCE2_WIN12_RATE2", "COURCE5_WIN123_RATE5", "COURCE6_WIN12_RATE6", "ST_AVG1", "COURCE5_LOCAL_WIN1_RATE5", "AGE3", "PLAYERID6", "COURCE6_WIN1_RATE6", "COURCE5_WIN1_RATE5", "AGE1", "COURCE5_WIN12_RATE5", "WIN1RATE3", "WIN1RATE5", "WEIGHT6", "WIN2RATE1", "WIN1RATE2", "ST_AVG4", "WEIGHT4", "COURCE2_WIN123_RATE2", "CLASS1", "LOCALWIN1RATE4", "CLASS6", "ST_AVG6", "COURCE1_LOCAL_WIN123_RATE1", "COURCE3_WIN12_RATE3", "LOCALWIN2RATE3", "COURCE1_WIN123_RATE1", "LOCALWIN2RATE4", "MOTORWIN2RATE6", "MOTORWIN2RATE3", "COURCE6_LOCAL_WIN1_RATE6", "WIN2RATE3", "LOCALWIN1RATE5", "CLASS3", "WEIGHT1", "LOCALWIN1RATE1", "WIN1RATE4", "COURCE1_LOCAL_WIN12_RATE1", "PLAYERID2", "RACEDATE", "MOTORWIN2RATE4", "COURCE4_LOCAL_WIN12_RATE4", "COURCE6_WIN123_RATE6", "COURCE2_LOCAL_WIN1_RATE2", "PLACE", "COURCE2_LOCAL_WIN12_RATE2", "COURCE3_WIN123_RATE3", "WEIGHT3", "COURCE1_LOCAL_WIN1_RATE1", "AGE6", "COURCE3_WIN1_RATE3", "CLASS5", "COURCE4_WIN1_RATE4", "PLAYERID1", "PLAYERID3", "LOCALWIN2RATE1"]
 col_selector = ColumnSelector(supported_cols)
 
 # COMMAND ----------
@@ -110,31 +110,6 @@ for col in ["RACEDATE"]:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Boolean columns
-# MAGIC For each column, impute missing values and then convert into ones and zeros.
-
-# COMMAND ----------
-
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer
-from sklearn.preprocessing import OneHotEncoder as SklearnOneHotEncoder
-
-
-bool_imputers = []
-
-bool_pipeline = Pipeline(steps=[
-    ("cast_type", FunctionTransformer(lambda df: df.astype(object))),
-    ("imputers", ColumnTransformer(bool_imputers, remainder="passthrough")),
-    ("onehot", SklearnOneHotEncoder(handle_unknown="ignore", drop="first")),
-])
-
-bool_transformers = [("boolean", bool_pipeline, ["L4", "L5", "L6", "L2", "L1", "L3"])]
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ### Numerical columns
 # MAGIC
 # MAGIC Missing values for numerical columns are imputed with mean by default.
@@ -147,7 +122,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 num_imputers = []
-num_imputers.append(("impute_mean", SimpleImputer(), ["AGE1", "AGE2", "AGE3", "AGE4", "AGE5", "AGE6", "BOATWIN2RATE1", "BOATWIN2RATE2", "BOATWIN2RATE3", "BOATWIN2RATE4", "BOATWIN2RATE5", "BOATWIN2RATE6", "CLASS1", "CLASS2", "CLASS3", "CLASS4", "CLASS5", "CLASS6", "COURCE1_LOCAL_RACE_COUNT1", "COURCE1_LOCAL_WIN123_RATE1", "COURCE1_LOCAL_WIN12_RATE1", "COURCE1_LOCAL_WIN1_RATE1", "COURCE1_RACE_COUNT1", "COURCE1_WIN123_RATE1", "COURCE1_WIN12_RATE1", "COURCE1_WIN1_RATE1", "COURCE2_LOCAL_RACE_COUNT2", "COURCE2_LOCAL_WIN123_RATE2", "COURCE2_LOCAL_WIN12_RATE2", "COURCE2_LOCAL_WIN1_RATE2", "COURCE2_RACE_COUNT2", "COURCE2_WIN123_RATE2", "COURCE2_WIN12_RATE2", "COURCE2_WIN1_RATE2", "COURCE3_LOCAL_RACE_COUNT3", "COURCE3_LOCAL_WIN123_RATE3", "COURCE3_LOCAL_WIN12_RATE3", "COURCE3_LOCAL_WIN1_RATE3", "COURCE3_RACE_COUNT3", "COURCE3_WIN123_RATE3", "COURCE3_WIN12_RATE3", "COURCE3_WIN1_RATE3", "COURCE4_LOCAL_RACE_COUNT4", "COURCE4_LOCAL_WIN123_RATE4", "COURCE4_LOCAL_WIN12_RATE4", "COURCE4_LOCAL_WIN1_RATE4", "COURCE4_RACE_COUNT4", "COURCE4_WIN123_RATE4", "COURCE4_WIN12_RATE4", "COURCE4_WIN1_RATE4", "COURCE5_LOCAL_RACE_COUNT5", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "COURCE5_LOCAL_WIN1_RATE5", "COURCE5_RACE_COUNT5", "COURCE5_WIN123_RATE5", "COURCE5_WIN12_RATE5", "COURCE5_WIN1_RATE5", "COURCE6_LOCAL_RACE_COUNT6", "COURCE6_LOCAL_WIN123_RATE6", "COURCE6_LOCAL_WIN12_RATE6", "COURCE6_LOCAL_WIN1_RATE6", "COURCE6_RACE_COUNT6", "COURCE6_WIN123_RATE6", "COURCE6_WIN12_RATE6", "COURCE6_WIN1_RATE6", "F1", "F2", "F3", "F4", "F5", "F6", "L1", "L2", "L3", "L4", "L5", "L6", "LOCALWIN1RATE1", "LOCALWIN1RATE2", "LOCALWIN1RATE3", "LOCALWIN1RATE4", "LOCALWIN1RATE5", "LOCALWIN1RATE6", "LOCALWIN2RATE1", "LOCALWIN2RATE2", "LOCALWIN2RATE3", "LOCALWIN2RATE4", "LOCALWIN2RATE5", "LOCALWIN2RATE6", "MOTORWIN2RATE1", "MOTORWIN2RATE2", "MOTORWIN2RATE3", "MOTORWIN2RATE4", "MOTORWIN2RATE5", "MOTORWIN2RATE6", "ST_AVG1", "ST_AVG2", "ST_AVG3", "ST_AVG4", "ST_AVG5", "ST_AVG6", "WEIGHT1", "WEIGHT2", "WEIGHT3", "WEIGHT4", "WEIGHT5", "WEIGHT6", "WIN1RATE1", "WIN1RATE2", "WIN1RATE3", "WIN1RATE4", "WIN1RATE5", "WIN1RATE6", "WIN2RATE1", "WIN2RATE2", "WIN2RATE3", "WIN2RATE4", "WIN2RATE5", "WIN2RATE6"]))
+num_imputers.append(("impute_mean", SimpleImputer(), ["AGE1", "AGE2", "AGE3", "AGE4", "AGE5", "AGE6", "CLASS1", "CLASS2", "CLASS3", "CLASS4", "CLASS5", "CLASS6", "COURCE1_LOCAL_WIN123_RATE1", "COURCE1_LOCAL_WIN12_RATE1", "COURCE1_LOCAL_WIN1_RATE1", "COURCE1_WIN123_RATE1", "COURCE1_WIN12_RATE1", "COURCE1_WIN1_RATE1", "COURCE2_LOCAL_WIN123_RATE2", "COURCE2_LOCAL_WIN12_RATE2", "COURCE2_LOCAL_WIN1_RATE2", "COURCE2_WIN123_RATE2", "COURCE2_WIN12_RATE2", "COURCE2_WIN1_RATE2", "COURCE3_LOCAL_WIN123_RATE3", "COURCE3_LOCAL_WIN12_RATE3", "COURCE3_LOCAL_WIN1_RATE3", "COURCE3_WIN123_RATE3", "COURCE3_WIN12_RATE3", "COURCE3_WIN1_RATE3", "COURCE4_LOCAL_WIN123_RATE4", "COURCE4_LOCAL_WIN12_RATE4", "COURCE4_LOCAL_WIN1_RATE4", "COURCE4_WIN123_RATE4", "COURCE4_WIN12_RATE4", "COURCE4_WIN1_RATE4", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "COURCE5_LOCAL_WIN1_RATE5", "COURCE5_WIN123_RATE5", "COURCE5_WIN12_RATE5", "COURCE5_WIN1_RATE5", "COURCE6_LOCAL_WIN123_RATE6", "COURCE6_LOCAL_WIN12_RATE6", "COURCE6_LOCAL_WIN1_RATE6", "COURCE6_WIN123_RATE6", "COURCE6_WIN12_RATE6", "COURCE6_WIN1_RATE6", "LOCALWIN1RATE1", "LOCALWIN1RATE2", "LOCALWIN1RATE3", "LOCALWIN1RATE4", "LOCALWIN1RATE5", "LOCALWIN1RATE6", "LOCALWIN2RATE1", "LOCALWIN2RATE2", "LOCALWIN2RATE3", "LOCALWIN2RATE4", "LOCALWIN2RATE5", "LOCALWIN2RATE6", "MOTORWIN2RATE1", "MOTORWIN2RATE2", "MOTORWIN2RATE3", "MOTORWIN2RATE4", "MOTORWIN2RATE5", "MOTORWIN2RATE6", "ST_AVG1", "ST_AVG2", "ST_AVG3", "ST_AVG4", "ST_AVG5", "ST_AVG6", "WEIGHT1", "WEIGHT2", "WEIGHT3", "WEIGHT4", "WEIGHT5", "WEIGHT6", "WIN1RATE1", "WIN1RATE2", "WIN1RATE3", "WIN1RATE4", "WIN1RATE5", "WIN1RATE6", "WIN2RATE1", "WIN2RATE2", "WIN2RATE3", "WIN2RATE4", "WIN2RATE5", "WIN2RATE6"]))
 
 numerical_pipeline = Pipeline(steps=[
     ("converter", FunctionTransformer(lambda df: df.apply(pd.to_numeric, errors='coerce'))),
@@ -155,7 +130,7 @@ numerical_pipeline = Pipeline(steps=[
     ("standardizer", StandardScaler()),
 ])
 
-numerical_transformers = [("numerical", numerical_pipeline, ["COURCE6_RACE_COUNT6", "L4", "WEIGHT2", "F4", "COURCE4_LOCAL_WIN123_RATE4", "COURCE1_LOCAL_RACE_COUNT1", "COURCE4_LOCAL_WIN1_RATE4", "WIN1RATE6", "COURCE6_LOCAL_WIN123_RATE6", "WIN1RATE1", "COURCE1_WIN1_RATE1", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "BOATWIN2RATE1", "COURCE3_LOCAL_WIN1_RATE3", "COURCE4_WIN12_RATE4", "AGE4", "LOCALWIN2RATE5", "COURCE6_LOCAL_WIN12_RATE6", "BOATWIN2RATE4", "WIN2RATE4", "COURCE5_LOCAL_RACE_COUNT5", "COURCE3_LOCAL_WIN123_RATE3", "LOCALWIN2RATE6", "COURCE4_WIN123_RATE4", "MOTORWIN2RATE5", "COURCE3_RACE_COUNT3", "BOATWIN2RATE3", "COURCE1_WIN12_RATE1", "COURCE2_WIN1_RATE2", "F5", "WIN2RATE6", "COURCE6_LOCAL_RACE_COUNT6", "ST_AVG3", "L1", "MOTORWIN2RATE2", "BOATWIN2RATE5", "LOCALWIN1RATE2", "CLASS4", "CLASS2", "MOTORWIN2RATE1", "LOCALWIN1RATE6", "LOCALWIN1RATE3", "COURCE2_LOCAL_WIN123_RATE2", "F3", "WEIGHT5", "ST_AVG2", "LOCALWIN2RATE2", "L5", "WIN2RATE2", "AGE5", "ST_AVG5", "AGE2", "BOATWIN2RATE6", "COURCE3_LOCAL_RACE_COUNT3", "COURCE4_LOCAL_RACE_COUNT4", "COURCE3_LOCAL_WIN12_RATE3", "WIN2RATE5", "COURCE2_WIN12_RATE2", "COURCE5_WIN123_RATE5", "COURCE6_WIN12_RATE6", "ST_AVG1", "COURCE5_LOCAL_WIN1_RATE5", "AGE3", "COURCE6_WIN1_RATE6", "COURCE5_WIN1_RATE5", "COURCE2_RACE_COUNT2", "AGE1", "COURCE5_WIN12_RATE5", "WIN1RATE3", "WIN1RATE5", "COURCE1_RACE_COUNT1", "WEIGHT6", "WIN2RATE1", "F1", "WIN1RATE2", "ST_AVG4", "BOATWIN2RATE2", "WEIGHT4", "COURCE2_WIN123_RATE2", "CLASS1", "LOCALWIN1RATE4", "CLASS6", "COURCE5_RACE_COUNT5", "L6", "ST_AVG6", "COURCE1_LOCAL_WIN123_RATE1", "COURCE3_WIN12_RATE3", "L3", "LOCALWIN2RATE3", "COURCE1_WIN123_RATE1", "LOCALWIN2RATE4", "MOTORWIN2RATE6", "MOTORWIN2RATE3", "L2", "COURCE6_LOCAL_WIN1_RATE6", "WIN2RATE3", "LOCALWIN1RATE5", "CLASS3", "F2", "WEIGHT1", "LOCALWIN1RATE1", "WIN1RATE4", "COURCE1_LOCAL_WIN12_RATE1", "COURCE2_LOCAL_RACE_COUNT2", "MOTORWIN2RATE4", "COURCE4_LOCAL_WIN12_RATE4", "COURCE6_WIN123_RATE6", "COURCE2_LOCAL_WIN1_RATE2", "COURCE2_LOCAL_WIN12_RATE2", "COURCE3_WIN123_RATE3", "COURCE4_RACE_COUNT4", "WEIGHT3", "COURCE1_LOCAL_WIN1_RATE1", "AGE6", "F6", "CLASS5", "COURCE3_WIN1_RATE3", "COURCE4_WIN1_RATE4", "LOCALWIN2RATE1"])]
+numerical_transformers = [("numerical", numerical_pipeline, ["WEIGHT2", "COURCE4_LOCAL_WIN123_RATE4", "COURCE4_LOCAL_WIN1_RATE4", "WIN1RATE6", "COURCE6_LOCAL_WIN123_RATE6", "WIN1RATE1", "COURCE1_WIN1_RATE1", "COURCE5_LOCAL_WIN123_RATE5", "COURCE5_LOCAL_WIN12_RATE5", "COURCE3_LOCAL_WIN1_RATE3", "COURCE4_WIN12_RATE4", "AGE4", "LOCALWIN2RATE5", "COURCE6_LOCAL_WIN12_RATE6", "WIN2RATE4", "COURCE3_LOCAL_WIN123_RATE3", "LOCALWIN2RATE6", "COURCE4_WIN123_RATE4", "MOTORWIN2RATE5", "COURCE1_WIN12_RATE1", "COURCE2_WIN1_RATE2", "WIN2RATE6", "ST_AVG3", "MOTORWIN2RATE2", "LOCALWIN1RATE2", "CLASS4", "CLASS2", "MOTORWIN2RATE1", "LOCALWIN1RATE6", "LOCALWIN1RATE3", "COURCE2_LOCAL_WIN123_RATE2", "WEIGHT5", "ST_AVG2", "LOCALWIN2RATE2", "WIN2RATE2", "AGE5", "ST_AVG5", "AGE2", "COURCE3_LOCAL_WIN12_RATE3", "WIN2RATE5", "COURCE2_WIN12_RATE2", "COURCE5_WIN123_RATE5", "COURCE6_WIN12_RATE6", "ST_AVG1", "COURCE5_LOCAL_WIN1_RATE5", "AGE3", "COURCE6_WIN1_RATE6", "COURCE5_WIN1_RATE5", "AGE1", "COURCE5_WIN12_RATE5", "WIN1RATE3", "WIN1RATE5", "WEIGHT6", "WIN2RATE1", "WIN1RATE2", "ST_AVG4", "WEIGHT4", "COURCE2_WIN123_RATE2", "CLASS1", "LOCALWIN1RATE4", "CLASS6", "ST_AVG6", "COURCE1_LOCAL_WIN123_RATE1", "COURCE3_WIN12_RATE3", "LOCALWIN2RATE3", "COURCE1_WIN123_RATE1", "LOCALWIN2RATE4", "MOTORWIN2RATE6", "MOTORWIN2RATE3", "COURCE6_LOCAL_WIN1_RATE6", "WIN2RATE3", "LOCALWIN1RATE5", "CLASS3", "WEIGHT1", "LOCALWIN1RATE1", "WIN1RATE4", "COURCE1_LOCAL_WIN12_RATE1", "MOTORWIN2RATE4", "COURCE4_LOCAL_WIN12_RATE4", "COURCE6_WIN123_RATE6", "COURCE2_LOCAL_WIN1_RATE2", "COURCE2_LOCAL_WIN12_RATE2", "COURCE3_WIN123_RATE3", "WEIGHT3", "COURCE1_LOCAL_WIN1_RATE1", "AGE6", "COURCE3_WIN1_RATE3", "CLASS5", "COURCE4_WIN1_RATE4", "LOCALWIN2RATE1"])]
 
 # COMMAND ----------
 
@@ -183,15 +158,46 @@ one_hot_pipeline = Pipeline(steps=[
     ("one_hot_encoder", OneHotEncoder(handle_unknown="indicator")),
 ])
 
-categorical_one_hot_transformers = [("onehot", one_hot_pipeline, ["CLUB1", "CLUB2", "CLUB3", "CLUB4", "CLUB5", "CLUB6", "F1", "F2", "F3", "PLACE", "RACE"])]
+categorical_one_hot_transformers = [("onehot", one_hot_pipeline, ["PLACE"])]
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Medium-cardinality categoricals
+# MAGIC Convert each medium-cardinality categorical column into a numerical representation.
+# MAGIC Each string column is hashed to 1024 float columns.
+# MAGIC Each numeric column is imputed with zeros.
+
+# COMMAND ----------
+
+from sklearn.feature_extraction import FeatureHasher
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+
+imputers = {
+}
+
+categorical_hash_transformers = []
+
+for col in ["PLAYERID1", "PLAYERID2", "PLAYERID3", "PLAYERID4", "PLAYERID5", "PLAYERID6"]:
+    hasher = FeatureHasher(n_features=1024, input_type="string")
+    if col in imputers:
+        imputer_name, imputer = imputers[col]
+    else:
+        imputer_name, imputer = "impute_string_", SimpleImputer(fill_value='', missing_values=None, strategy='constant')
+    hash_pipeline = Pipeline(steps=[
+        (imputer_name, imputer),
+        (f"{col}_hasher", hasher),
+    ])
+    categorical_hash_transformers.append((f"{col}_pipeline", hash_pipeline, [col]))
 
 # COMMAND ----------
 
 from sklearn.compose import ColumnTransformer
 
-transformers = datetime_transformers + bool_transformers + numerical_transformers + categorical_one_hot_transformers
+transformers = datetime_transformers + numerical_transformers + categorical_one_hot_transformers + categorical_hash_transformers
 
-preprocessor = ColumnTransformer(transformers, remainder="passthrough", sparse_threshold=0)
+preprocessor = ColumnTransformer(transformers, remainder="passthrough", sparse_threshold=1)
 
 # COMMAND ----------
 
@@ -239,7 +245,7 @@ X_test = X_test.drop(["_automl_sample_weight_0000"], axis=1)
 # MAGIC %md
 # MAGIC ## Train classification model
 # MAGIC - Log relevant metrics to MLflow to track runs
-# MAGIC - All the runs are logged under [this MLflow experiment](#mlflow/experiments/3031282363653284)
+# MAGIC - All the runs are logged under [this MLflow experiment](#mlflow/experiments/3031282363662614)
 # MAGIC - Change the model parameters and re-run the training cell to log a different trial to the MLflow experiment
 # MAGIC - To view the full list of tunable hyperparameters, check the output of the cell below
 
@@ -281,7 +287,7 @@ pipeline_val.fit(X_train, y_train)
 X_val_processed = pipeline_val.transform(X_val)
 
 def objective(params):
-  with mlflow.start_run(experiment_id="3031282363653284") as mlflow_run:
+  with mlflow.start_run(experiment_id="3031282363662614") as mlflow_run:
     lgbmc_classifier = LGBMClassifier(**params)
 
     best_model = Pipeline([
@@ -301,7 +307,7 @@ def objective(params):
     # Log metrics for the training set
     mlflow_model = Model()
     pyfunc.add_to_model(mlflow_model, loader_module="mlflow.sklearn")
-    pyfunc_model = PyFuncModel(model_meta=mlflow_model, model_impl=best_model)
+    pyfunc_model = PyFuncModel(model_meta=mlflow_model, model_impl=best_model) 
     training_eval_result = mlflow.evaluate(
         model=pyfunc_model,
         data=X_train.assign(**{str(target_col):y_train}),
@@ -370,19 +376,36 @@ def objective(params):
 
 # COMMAND ----------
 
+# space = {
+#   "colsample_bytree": 0.5443819159400324,
+#   "lambda_l1": 0.11058632049278405,
+#   "lambda_l2": 5.09284287697047,
+#   "learning_rate": 0.033851071257386,
+#   "max_bin": 32,
+#   "max_depth": 3,
+#   "min_child_samples": 137,
+#   "n_estimators": 542,
+#   "num_leaves": 195,
+#   "path_smooth": 86.91538129015836,
+#   "subsample": 0.7147236871875938,
+#   "random_state": 985676157,
+# }
+
+# COMMAND ----------
+
 space = {
-  "colsample_bytree": 0.6449481099714283,
-  "lambda_l1": 1.0924303685882055,
-  "lambda_l2": 235.78025288486074,
-  "learning_rate": 0.07220516352335749,
-  "max_bin": 56,
-  "max_depth": 5,
-  "min_child_samples": 63,
-  "n_estimators": 439,
-  "num_leaves": 5,
-  "path_smooth": 20.895687603375798,
-  "subsample": 0.6469705972548407,
-  "random_state": 515957044,
+  "colsample_bytree": 0.4671981149486131,
+  "lambda_l1": 0.3109493265632623,
+  "lambda_l2": 0.4964254587729136,
+  "learning_rate": 0.03333356639193539,
+  "max_bin": 297,
+  "max_depth": 3,
+  "min_child_samples": 284,
+  "n_estimators": 1308,
+  "num_leaves": 17,
+  "path_smooth": 56.64475213962636,
+  "subsample": 0.5500994723395024,
+  "random_state": 847474640,
 }
 
 # COMMAND ----------
@@ -501,7 +524,7 @@ class model(mlflow.pyfunc.PythonModel):
     
     # 結果をデータフレームに変換
     df1 = pd.DataFrame(data=proba,columns=['prob1','prob2','prob3','prob4','prob5','prob6'])
-    df2 = pd.DataFrame(data=pred,columns=['predict'])
+    df2 = pd.DataFrame(data=pred,columns=['predict_tan'])
    
     # データフレームを連結
     pdf = pd.concat([df1, df2 ], axis=1)
@@ -532,7 +555,7 @@ loaded_model = mlflow.pyfunc.load_model(logged_model)
 # COMMAND ----------
 
 # Python関数としてコールするので予測対象データはPandasデータフレームに変換して渡します。
-input_table_name = "main.kyotei_db.predict"
+input_table_name = "main.kyotei_db.model_predict"
 
 # load table as a Spark DataFrame
 table = spark.table(input_table_name)
@@ -568,7 +591,7 @@ sdf.write.saveAsTable("main.kyotei_db.predict_tan")
 # MAGIC   tan,
 # MAGIC   tank,
 # MAGIC   rentan3,
-# MAGIC   predict,
+# MAGIC   predict_tan,
 # MAGIC   round(prob1,3) as p1,
 # MAGIC   round(prob2,3) as p2,
 # MAGIC   round(prob3,3) as p3,
@@ -580,50 +603,49 @@ sdf.write.saveAsTable("main.kyotei_db.predict_tan")
 
 # COMMAND ----------
 
-
+# MAGIC %md ### 1着の予測
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC select 
-# MAGIC count(1),
-# MAGIC sum(win),
-# MAGIC round(sum(win) / count(1) , 3) as `勝率`,
-# MAGIC sum(wink) as `払戻金額`,
-# MAGIC count(1) * 100 as `コスト`,
-# MAGIC sum(wink) - (count(1) * 100) as `利益金額`,
-# MAGIC round(sum(wink) / (count(1) * 100),3) as `回収率`
-# MAGIC from(
+# MAGIC count(1) as `購入対象レース数`,
+# MAGIC sum(win) as `的中レース数`,
+# MAGIC sum(win) / count(1) as `正解率`,
+# MAGIC sum(wink) as `払い戻し金合計`,
+# MAGIC count(1) * 100. as `経費合計`,
+# MAGIC sum(wink) - (count(1) * 100) as `利益合計`
+# MAGIC from 
+# MAGIC (
 # MAGIC select
 # MAGIC   RACEDATE,
 # MAGIC   PLACE,
 # MAGIC   RACE,
-# MAGIC   tan,
-# MAGIC   tank,
-# MAGIC   rentan3,
-# MAGIC   predict,
-# MAGIC   round(prob1,3) as p1,
-# MAGIC   round(prob2,3) as p2,
-# MAGIC   round(prob3,3) as p3,
-# MAGIC   round(prob4,3) as p4,
-# MAGIC   round(prob5,3) as p5,
-# MAGIC   round(prob6,3) as p6,
-# MAGIC   case when predict = tan then 1 else 0 end as win,
-# MAGIC   case when predict = tan then tank else 0 end as wink
+# MAGIC   predict_tan,
+# MAGIC   fuku1,
+# MAGIC   fuku2,
+# MAGIC   case when cast(predict_tan as int) in (cast(tan as int) ) then 1 else 0 end as win,
+# MAGIC   case 
+# MAGIC   when cast(predict_tan as int) in (cast(tan as int)) then tank 
+# MAGIC   else 0 end as wink
 # MAGIC from
 # MAGIC   main.kyotei_db.predict_tan
-# MAGIC   where predict=2 and round(prob2,3) between 0.4 and 0.41 and tan is not null
+# MAGIC   where tan <> 'NaN' and predict_tan = 1 and prob1 >= 0.5 and prob1 <= 1.0
+# MAGIC
 # MAGIC ) 
 
 # COMMAND ----------
 
-# MAGIC %md ### 2連単の予測UDF
+# MAGIC %md ### UDF作成
 
 # COMMAND ----------
 
 # SparkSQLでの関数として実行できるようにする
 from pyspark.sql.types import ArrayType, FloatType, StringType
 
+##############
+#2連単の取得UDF
+##############
 def rentan2(p1,p2,p3,p4,p5,p6):
   import heapq
   #最大値・最小値から順にn個の要素を取得
@@ -672,15 +694,10 @@ udf_rentan2 = udf(rentan2, StringType())
 #Spark-UDFをSQL関数として登録
 spark.udf.register('sql_rentan2', udf_rentan2 ) 
 
-# COMMAND ----------
 
-# MAGIC %md ### 2連複の予測UDF
-
-# COMMAND ----------
-
-# SparkSQLでの関数として実行できるようにする
-from pyspark.sql.types import ArrayType, FloatType, StringType
-
+##############
+#2連複の取得UDF
+##############
 def renfuku2(p1,p2,p3,p4,p5,p6):
   import heapq
   #最大値・最小値から順にn個の要素を取得
@@ -732,14 +749,9 @@ udf_renfuku2 = udf(renfuku2, StringType())
 #Spark-UDFをSQL関数として登録
 spark.udf.register('sql_renfuku2', udf_renfuku2 ) 
 
-# COMMAND ----------
-
-# MAGIC %md ### 3連単の予測UDF
-
-# COMMAND ----------
-
-# SparkSQLでの関数として実行できるようにする
-from pyspark.sql.types import ArrayType, FloatType, StringType
+##############
+#３連単の取得UDF
+##############
 
 def rentan3(p1,p2,p3,p4,p5,p6):
   import heapq
@@ -803,14 +815,10 @@ udf_rentan3 = udf(rentan3, StringType())
 #Spark-UDFをSQL関数として登録
 spark.udf.register('sql_rentan3', udf_rentan3 ) 
 
-# COMMAND ----------
 
-# MAGIC %md ### 3連複の予測UDF
-
-# COMMAND ----------
-
-# SparkSQLでの関数として実行できるようにする
-from pyspark.sql.types import ArrayType, FloatType, StringType
+##############
+#３連複の取得UDF
+##############
 
 def renfuku3(p1,p2,p3,p4,p5,p6):
   import heapq
@@ -958,16 +966,16 @@ if shap_enabled:
     mlflow.sklearn.autolog(disable=True)
     from shap import KernelExplainer, summary_plot
     # Sample background data for SHAP Explainer. Increase the sample size to reduce variance.
-    train_sample = X_train.sample(n=min(100, X_train.shape[0]), random_state=515957044)
+    train_sample = X_train.sample(n=min(100, X_train.shape[0]), random_state=20391643)
 
     # Sample some rows from the validation set to explain. Increase the sample size for more thorough results.
-    example = X_val.sample(n=min(100, X_val.shape[0]), random_state=515957044)
+    example = X_val.sample(n=min(100, X_val.shape[0]), random_state=20391643)
 
     # Use Kernel SHAP to explain feature importance on the sampled rows from the validation set.
     predict = lambda x: model.predict_proba(pd.DataFrame(x, columns=X_train.columns))
     explainer = KernelExplainer(predict, train_sample, link="logit")
     shap_values = explainer.shap_values(example, l1_reg=False, nsamples=500)
-    summary_plot(shap_values, example, class_names=model.classes_,max_display=50)
+    summary_plot(shap_values, example, class_names=model.classes_,max_display=100)
 
 # COMMAND ----------
 
@@ -1020,7 +1028,7 @@ print(f"runs:/{ mlflow_run.info.run_id }/model")
 # COMMAND ----------
 
 # Click the link to see the MLflow run page
-displayHTML(f"<a href=#mlflow/experiments/3031282363653284/runs/{ mlflow_run.info.run_id }/artifactPath/model> Link to model run page </a>")
+displayHTML(f"<a href=#mlflow/experiments/3031282363662614/runs/{ mlflow_run.info.run_id }/artifactPath/model> Link to model run page </a>")
 
 # COMMAND ----------
 
